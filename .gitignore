@@ -1,0 +1,94 @@
+# ============================================================
+# 多功能健身管理系统（毕业设计）— 全局忽略规则
+# 仓库根目录: D:\Workb_pj
+# ============================================================
+
+# ---------- 系统 / 编辑器 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vscode/
+*.suo
+*.user
+
+# ---------- Node.js 依赖 ----------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npmrc
+
+# ---------- 前端构建产物 ----------
+# uni-app 小程序 / H5 产物
+fitness-miniapp/dist/
+fitness-miniapp/unpackage/
+fitness-miniapp/.hbuilderx/
+# 管理后台 / H5 子项目产物
+fitness-admin/dist/
+fitness-admin/build/
+fitness-h5/dist/
+fitness-h5/build/
+# 通用构建缓存
+.vite/
+.cache/
+.temp/
+.tmp/
+.eslintcache
+*.tsbuildinfo
+
+# ---------- Java / Spring Boot ----------
+target/
+**/target/
+*.class
+*.log
+logs/
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+# 保留源码与构建脚本，仅忽略产物
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ---------- Python (fitness-data 数据处理脚本) ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---------- 运行时上传资源 ----------
+# 动作 GIF/视频约 122MB（1324 个），原始数据集已在桌面独立备份，
+# 可从 exercises-dataset-main 重新生成，故不纳入版本库。
+fitness-backend/upload/
+
+# ---------- 环境变量 / 本地覆盖配置 ----------
+.env
+.env.*
+!.env.example
+# 后端本地私密配置（数据库密码/JWT/微信AppSecret）
+fitness-backend/config/application-local.yml
+
+# ---------- 本项目临时文件 ----------
+_proc.txt
+_proc_count.txt
+
+# ---------- 仅本地、不入库（2026-09-07 约定：远程只推三个端） ----------
+# 数据库 SQL、数据处理脚本、原型文件、预览页、工作记忆等仅保留本地
+sql/
+fitness-data/
+gym-miniapp-prototype-v2/
+generated-images/
+.workbuddy/
+.codebuddy/
+CODEBUDDY.md
+overview.md
+course-detail-preview.html
+course-page-preview.html
+course-train-preview.html

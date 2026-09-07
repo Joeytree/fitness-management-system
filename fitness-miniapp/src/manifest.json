@@ -1,0 +1,30 @@
+{
+  "name": "多功能健身",
+  "appid": "",
+  "description": "多功能健身管理系统 - 用户端小程序",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true,
+    "nvueStyleCompiler": "uni-app",
+    "compilerVersion": 3
+  },
+  "mp-weixin": {
+    "appid": "wx6193281e02e83bc0",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents"
+  },
+  "h5": {
+    "title": "多功能健身",
+    "router": {
+      "mode": "hash"
+    }
+  },
+  "vueVersion": "3"
+}

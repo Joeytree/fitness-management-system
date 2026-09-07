@@ -1,0 +1,15 @@
+# ============================================================
+# 本地私密配置模板 —— 复制为 application-local.yml 并填入真实值
+# 该文件已被 .gitignore 排除；后端以 fitness-backend 为工作目录启动时自动加载
+# ============================================================
+spring:
+  datasource:
+    username: root
+    password: 你的数据库密码
+
+fitness:
+  jwt:
+    secret: 任意的长随机字符串（用于JWT签名）
+  wechat:
+    appid: 你的小程序AppID
+    secret: 你的小程序AppSecret

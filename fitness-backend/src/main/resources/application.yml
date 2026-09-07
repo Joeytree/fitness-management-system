@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: fitness-backend
+  # 本地私密配置（数据库密码/JWT密钥/微信AppSecret），不入库
+  # 模板见 config/application-local.yml.example，本地真实值写在 config/application-local.yml
+  config:
+    import: optional:file:./config/application-local.yml
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/fitness_management?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      id-type: auto
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# 自定义配置
+fitness:
+  jwt:
+    secret: ${JWT_SECRET:}
+    # Token 有效期 7 天
+    expire-days: 7
+  upload:
+    dir: ${user.dir}/upload
+  wechat:
+    appid: ${WECHAT_APPID:wx6193281e02e83bc0}
+    secret: ${WECHAT_APPSECRET:}

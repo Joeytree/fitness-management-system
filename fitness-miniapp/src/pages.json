@@ -1,0 +1,61 @@
+{
+  "pages": [
+    { "path": "pages/home/index", "style": { "navigationBarTitleText": "首页" } },
+    { "path": "pages/course/index", "style": { "navigationBarTitleText": "课程" } },
+    { "path": "pages/community/index", "style": { "navigationBarTitleText": "社区" } },
+    { "path": "pages/mine/index", "style": { "navigationBarTitleText": "我的" } },
+    { "path": "pages/login/index", "style": { "navigationBarTitleText": "登录" } },
+    { "path": "pages/register/index", "style": { "navigationBarTitleText": "注册" } },
+    { "path": "pages/recommend/index", "style": { "navigationBarTitleText": "为你推荐" } },
+    { "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索" } },
+    { "path": "pages/course/detail", "style": { "navigationBarTitleText": "课程详情", "navigationStyle": "custom", "disableScroll": false } },
+    { "path": "pages/course/train", "style": { "navigationBarTitleText": "课程跟练", "navigationStyle": "custom", "disableScroll": false } },
+    { "path": "pages/action/detail", "style": { "navigationBarTitleText": "动作讲解" } },
+    { "path": "pages/action/index", "style": { "navigationBarTitleText": "动作库" } },
+    { "path": "pages/action/ugc", "style": { "navigationBarTitleText": "提交自定义动作" } },
+    { "path": "pages/course/ugc", "style": { "navigationBarTitleText": "提交自定义课程" } },
+    { "path": "pages/mine/courses", "style": { "navigationBarTitleText": "我的课程" } },
+    { "path": "pages/plan/list", "style": { "navigationBarTitleText": "训练计划" } },
+    { "path": "pages/plan/detail", "style": { "navigationBarTitleText": "计划详情" } },
+    { "path": "pages/plan/create", "style": { "navigationBarTitleText": "创建计划" } },
+    { "path": "pages/plan/template", "style": { "navigationBarTitleText": "计划模板" } },
+    { "path": "pages/plan/calendar", "style": { "navigationBarTitleText": "训练日历" } },
+    { "path": "pages/training/execute", "style": { "navigationBarTitleText": "训练执行" } },
+    { "path": "pages/diet/index", "style": { "navigationBarTitleText": "饮食记录" } },
+    { "path": "pages/diet/search", "style": { "navigationBarTitleText": "食物库" } },
+    { "path": "pages/diet/record", "style": { "navigationBarTitleText": "添加饮食" } },
+    { "path": "pages/recipe/list", "style": { "navigationBarTitleText": "食谱推荐" } },
+    { "path": "pages/recipe/detail", "style": { "navigationBarTitleText": "食谱详情" } },
+    { "path": "pages/knowledge/list", "style": { "navigationBarTitleText": "知识库" } },
+    { "path": "pages/knowledge/detail", "style": { "navigationBarTitleText": "文章详情" } },
+    { "path": "pages/health/index", "style": { "navigationBarTitleText": "健康管理" } },
+    { "path": "pages/health/body", "style": { "navigationBarTitleText": "记录身体数据" } },
+    { "path": "pages/health/goal", "style": { "navigationBarTitleText": "健康目标" } },
+    { "path": "pages/health/checkin", "style": { "navigationBarTitleText": "打卡日历" } },
+    { "path": "pages/community/publish", "style": { "navigationBarTitleText": "发布动态" } },
+    { "path": "pages/community/moment", "style": { "navigationBarTitleText": "动态详情" } },
+    { "path": "pages/user/index", "style": { "navigationBarTitleText": "个人主页" } },
+    { "path": "pages/user/following", "style": { "navigationBarTitleText": "关注与粉丝" } },
+    { "path": "pages/mine/profile", "style": { "navigationBarTitleText": "编辑资料" } },
+    { "path": "pages/mine/favorites", "style": { "navigationBarTitleText": "我的收藏" } },
+    { "path": "pages/mine/notifications", "style": { "navigationBarTitleText": "消息通知" } }
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#9ca3af",
+    "selectedColor": "#10b981",
+    "backgroundColor": "#ffffff",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/course/index", "text": "课程" },
+      { "pagePath": "pages/community/index", "text": "社区" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "多功能健身",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f6faf8"
+  }
+}
