@@ -262,7 +262,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         insertArticle("增肌期饮食原则", 1, "增肌期应保证热量盈余，蛋白质摄入建议每公斤体重1.6-2.2g，碳水与脂肪合理搭配，训练前后补充快碳与蛋白质。", null);
         insertArticle("减脂期热量缺口怎么算", 1, "减脂核心是制造热量缺口，建议每日缺口300-500千卡，同时保证蛋白质摄入，避免肌肉流失。", null);
-        insertArticle("系统上线公告", 3, "多功能健身管理系统正式上线，欢迎使用课程学习、饮食记录、健康监测等功能。", null);
+        insertArticle("系统上线公告", 3, "智慧健身系统正式上线，欢迎使用课程学习、饮食记录、健康监测等功能。", null);
     }
 
     private void initReviewData() {

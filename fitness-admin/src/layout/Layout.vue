@@ -22,7 +22,7 @@
     <div class="main-area">
       <div class="topbar">
         <div class="crumbs">
-          <span>多功能健身管理系统</span>
+          <span>智慧健身系统</span>
           <span>/</span>
           <b>{{ currentTitle }}</b>
         </div>

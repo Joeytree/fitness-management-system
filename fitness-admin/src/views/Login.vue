@@ -4,7 +4,7 @@
       <div class="logo">
         <div class="logo-icon">F</div>
         <div>
-          <h1>多功能健身管理系统</h1>
+          <h1>智慧健身系统</h1>
           <div class="sub">Fitness Management System · 管理端</div>
         </div>
       </div>
