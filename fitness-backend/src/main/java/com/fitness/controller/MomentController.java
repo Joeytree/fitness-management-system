@@ -2,6 +2,7 @@ package com.fitness.controller;
 
 import com.fitness.common.PageResult;
 import com.fitness.common.Result;
+import com.fitness.dto.MomentCommentRequest;
 import com.fitness.dto.MomentRequest;
 import com.fitness.entity.Moment;
 import com.fitness.entity.MomentComment;
@@ -84,9 +85,7 @@ public class MomentController {
 
     @PostMapping("/{id}/comments")
     @RequireLogin
-    public Result<MomentComment> addComment(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String content = (String) body.get("content");
-        Long replyTo = body.get("replyTo") != null ? Long.valueOf(body.get("replyTo").toString()) : null;
-        return Result.ok(momentService.addComment(UserContext.getUserId(), id, content, replyTo));
+    public Result<MomentComment> addComment(@PathVariable Long id, @Valid @RequestBody MomentCommentRequest req) {
+        return Result.ok(momentService.addComment(UserContext.getUserId(), id, req.getContent(), req.getReplyTo()));
     }
 }

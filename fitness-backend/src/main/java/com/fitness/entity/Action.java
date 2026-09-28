@@ -1,6 +1,7 @@
 package com.fitness.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -30,6 +31,9 @@ public class Action {
     private Long userId;
     private Integer status;
     private String rejectReason;
+    /** 可见性（仅提交参数，不入库）：private=仅自用 / public=申请公开 */
+    @TableField(exist = false)
+    private String visibility;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     @TableLogic

@@ -49,50 +49,39 @@
       </view>
     </view>
 
-    <view class="section-title">动作列表</view>
-    <view v-for="(a, i) in selected" :key="i" class="action-item">
-      <view class="a-head">
-        <text class="a-name">{{ a.name }}</text>
-        <text class="a-remove" @click="removeAction(i)">✕</text>
+    <view class="section-title">课程列表（每天完成一门）</view>
+    <view v-for="(c, i) in selected" :key="c.id" class="course-item">
+      <view class="c-head">
+        <text class="c-name">{{ c.name }}</text>
+        <text class="c-remove" @click="removeCourse(i)">✕</text>
       </view>
-      <view class="a-params">
+      <view class="c-day">
         <view class="stepper">
-          <text @click="dec(a, 'day', 1)">－</text>
-          <text class="stepper-val day-val">第{{ a.day }}天</text>
-          <text @click="inc(a, 'day', 7)">＋</text>
+          <text @click="dec(c)">－</text>
+          <text class="stepper-val day-val">第{{ c.day }}天</text>
+          <text @click="inc(c)">＋</text>
         </view>
-        <view class="stepper">
-          <text @click="dec(a, 'sets')">－</text>
-          <text class="stepper-val">{{ a.sets }}</text>
-          <text @click="inc(a, 'sets')">＋</text>
-        </view>
-        <text class="p-label">组</text>
-        <view class="stepper">
-          <text @click="dec(a, 'reps')">－</text>
-          <text class="stepper-val">{{ a.reps }}</text>
-          <text @click="inc(a, 'reps')">＋</text>
-        </view>
-        <text class="p-label">次</text>
-      </view>
-      <view class="a-params">
-        <input class="half-input" v-model="a.weight" type="digit" placeholder="负重kg（空=自重）" />
-        <input class="rest-input" v-model="a.rest" type="number" placeholder="休息s" />
+        <text class="p-label">按天顺序自动排列</text>
       </view>
     </view>
 
-    <view class="add-btn" @click="openPicker">＋ 添加动作</view>
+    <view class="add-btn" @click="openPicker">＋ 添加课程</view>
 
     <button class="btn-primary save-btn" @click="save">保存计划</button>
 
-    <!-- 动作选择弹窗 -->
+    <!-- 课程选择弹窗 -->
     <view v-if="pickerVisible" class="picker-mask" @click="pickerVisible = false">
       <view class="picker-panel" @click.stop>
-        <view class="picker-title">选择动作</view>
-        <scroll-view scroll-y class="picker-list">
-          <view v-for="a in actions" :key="a.id" class="picker-item" @click="pickAction(a)">
-            <text>{{ a.name }}</text>
-            <text class="muted">{{ a.part }}</text>
+        <view class="picker-title">选择课程</view>
+        <scroll-view scroll-y class="picker-list" @scrolltolower="loadMoreCourses">
+          <view v-for="c in courses" :key="c.id" class="picker-item" @click="pickCourse(c)">
+            <view class="pi-left">
+              <text class="pi-name">{{ c.name }}</text>
+              <text class="muted">{{ c.category }} · {{ c.part || '全身' }} · {{ c.duration }}分钟</text>
+            </view>
+            <text class="pi-add">＋</text>
           </view>
+          <view v-if="courses.length" class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
         </scroll-view>
       </view>
     </view>
@@ -114,40 +103,68 @@ export default {
       goals: [
         { value: 1, label: '增肌' },
         { value: 2, label: '减脂' },
-        { value: 3, label: '塑形' }
+        { value: 3, label: '塑形' },
+        { value: 4, label: '保持' }
       ],
-      actions: [],
+      courses: [],
       selected: [],
-      pickerVisible: false
+      pickerVisible: false,
+      page: 1,
+      hasMore: true,
+      loading: false
     }
   },
   onLoad() {
-    this.loadActions()
+    this.loadCourses()
   },
   methods: {
-    async loadActions() {
+    async loadCourses() {
+      this.page = 1
+      this.hasMore = true
+      this.loading = false
       try {
-        const data = await get('/action', { page: 1, pageSize: 100 })
-        this.actions = data.list || []
+        const data = await get('/course', { page: 1, pageSize: 20 })
+        this.courses = data.list || []
+        this.hasMore = this.courses.length < (data.total || 0)
       } catch (e) { /* 忽略 */ }
+    },
+    async loadMoreCourses() {
+      if (this.loading || !this.hasMore) return
+      this.loading = true
+      try {
+        const data = await get('/course', { page: this.page + 1, pageSize: 20 })
+        const list = data.list || []
+        if (list.length) {
+          this.courses = this.courses.concat(list)
+          this.page += 1
+          this.hasMore = this.courses.length < (data.total || 0)
+        } else {
+          this.hasMore = false
+        }
+      } catch (e) { /* 忽略 */ }
+      this.loading = false
     },
     openPicker() {
       this.pickerVisible = true
     },
-    pickAction(a) {
-      this.selected.push({ actionId: a.id, name: a.name, day: 1, sets: 3, reps: 12, weight: '', rest: 60 })
+    pickCourse(c) {
+      if (this.selected.some(x => x.courseId === c.id)) {
+        uni.showToast({ title: '该课程已添加', icon: 'none' })
+        return
+      }
+      this.selected.push({ courseId: c.id, name: c.name, day: this.selected.length + 1 })
       this.pickerVisible = false
     },
-    removeAction(i) {
+    removeCourse(i) {
       this.selected.splice(i, 1)
+      // 重新按顺序编号
+      this.selected.forEach((c, idx) => { c.day = idx + 1 })
     },
-    inc(a, key, max) {
-      a[key] = (a[key] || 0) + 1
-      if (max && a[key] > max) a[key] = max
+    inc(c) {
+      if (c.day < 7) c.day = c.day + 1
     },
-    dec(a, key, min) {
-      const lo = min || 1
-      if (a[key] > lo) a[key] = a[key] - 1
+    dec(c) {
+      if (c.day > 1) c.day = c.day - 1
     },
     async save() {
       if (!this.name) {
@@ -155,7 +172,7 @@ export default {
         return
       }
       if (!this.selected.length) {
-        uni.showToast({ title: '请添加动作', icon: 'none' })
+        uni.showToast({ title: '请添加课程', icon: 'none' })
         return
       }
       try {
@@ -164,13 +181,9 @@ export default {
           goal: this.goal,
           level: 1,
           cycle: `每周${this.freq}练·每次${this.duration}分钟`,
-          actions: this.selected.map((a, i) => ({
-            actionId: a.actionId,
-            dayNo: a.day || 1,
-            sets: a.sets,
-            reps: a.reps,
-            weight: a.weight ? Number(a.weight) : null,
-            rest: Number(a.rest) || 0,
+          courses: this.selected.map((c, i) => ({
+            courseId: c.courseId,
+            dayNo: c.day || 1,
             sort: i + 1
           }))
         })
@@ -258,26 +271,26 @@ export default {
   font-weight: 700;
   margin: 32rpx 8rpx 20rpx;
 }
-.action-item {
+.course-item {
   background: #fff;
   border-radius: 24rpx;
   padding: 24rpx 28rpx;
   margin-bottom: 16rpx;
 }
-.a-head {
+.c-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.a-name {
+.c-name {
   font-size: 28rpx;
   font-weight: 600;
 }
-.a-remove {
+.c-remove {
   color: #ef4444;
   font-size: 32rpx;
 }
-.a-params {
+.c-day {
   display: flex;
   align-items: center;
   gap: 16rpx;
@@ -299,27 +312,13 @@ export default {
   background: #fff;
   color: #1f2937 !important;
 }
-.p-label {
-  font-size: 24rpx;
-  color: #6b7280;
-}
-.rest-input {
-  flex: 1;
-  background: #f3f4f6;
-  border-radius: 16rpx;
-  padding: 12rpx 20rpx;
-  font-size: 26rpx;
-}
-.half-input {
-  flex: 1;
-  background: #f3f4f6;
-  border-radius: 16rpx;
-  padding: 12rpx 20rpx;
-  font-size: 26rpx;
-}
 .day-val {
   min-width: 92rpx;
   text-align: center;
+}
+.p-label {
+  font-size: 24rpx;
+  color: #6b7280;
 }
 .add-btn {
   text-align: center;
@@ -362,13 +361,36 @@ export default {
   margin-bottom: 20rpx;
 }
 .picker-list {
-  max-height: 60vh;
+  height: 56vh;
 }
 .picker-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 26rpx 8rpx;
   border-bottom: 1rpx solid #f3f4f6;
   font-size: 28rpx;
+}
+.pi-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.pi-name {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.pi-add {
+  color: #10b981;
+  font-size: 36rpx;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+.load-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 </style>

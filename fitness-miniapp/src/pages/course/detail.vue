@@ -2,16 +2,16 @@
   <view class="page" v-if="course.id">
     <!-- 沉浸式 Hero：覆满到状态栏下方 -->
     <view class="hero">
-      <image v-if="course.cover" class="hero-img" :src="fullUrl(course.cover)" mode="aspectFill" />
-      <view v-else class="hero-img hero-fallback" :style="{ background: coverGrad(course.category) }">
+      <image v-if="course.cover" class="hero-img" :src="fullUrl(course.cover)" mode="aspectFill" :style="{ top: statusBarH + 'px' }" />
+      <view v-else class="hero-img hero-fallback" :style="{ background: coverGrad(course.category), top: statusBarH + 'px' }">
         <text class="hero-emoji">{{ catEmoji(course.category) }}</text>
       </view>
-      <!-- 底部深色渐变（同时盖住右下角水印） -->
-      <view class="hero-shade" />
+      <!-- 底部深色渐变（同时盖住右下角水印） — top 跟随 statusBarH，不延伸到状态栏区域 -->
+      <view class="hero-shade" :style="{ top: statusBarH + 'px' }" />
       <!-- 分类角标（浮左下） -->
       <view class="hero-badge">{{ course.category }}</view>
-      <!-- 顶部操作栏（返回 / 更多） -->
-      <view class="hero-top">
+      <!-- 顶部操作栏（返回 / 更多） — 绝对 top 用动态 statusBarH 替代 env() -->
+      <view class="hero-top" :style="{ top: statusBarH + 'px' }">
         <view class="top-btn" @click="goBack">
           <text class="top-icon">←</text>
         </view>
@@ -113,8 +113,12 @@ import { fullUrl } from '../../utils/config'
 
 export default {
   data() {
+    // mp-weixin 不支持 env(safe-area-inset-top)，必须用 statusBarHeight
+    let statusBarH = 0
+    try { statusBarH = (uni.getSystemInfoSync().statusBarHeight || 0) } catch (e) {}
     return {
       id: null,
+      statusBarH,
       course: {},
       actions: [],
       favorite: false,

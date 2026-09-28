@@ -79,11 +79,14 @@
             <el-option v-for="t in ['增肌','减脂','高蛋白','高纤维','低碳水','快手','加餐','均衡']" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
+        <el-form-item label="封面">
+          <ImageUpload v-model="form.cover" tip="支持 jpg/png/webp，≤2MB" />
+        </el-form-item>
         <el-row :gutter="12">
-          <el-col :span="6"><el-form-item label="热量"><el-input-number v-model="form.calorie" :min="0" style="width:100%" /></el-form-item></el-col>
-          <el-col :span="6"><el-form-item label="蛋白"><el-input-number v-model="form.protein" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
-          <el-col :span="6"><el-form-item label="碳水"><el-input-number v-model="form.carb" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
-          <el-col :span="6"><el-form-item label="脂肪"><el-input-number v-model="form.fat" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="热量"><el-input-number v-model="form.calorie" :min="0" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="蛋白"><el-input-number v-model="form.protein" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="碳水"><el-input-number v-model="form.carb" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="脂肪"><el-input-number v-model="form.fat" :min="0" :precision="1" style="width:100%" /></el-form-item></el-col>
         </el-row>
         <el-form-item label="做法" required>
           <el-input v-model="form.content" type="textarea" :rows="4" />
@@ -111,7 +114,7 @@ const statusFilter = ref(null)
 const formVisible = ref(false)
 const form = ref({})
 
-function blank() { return { name: '', goal: 1, tags: [], calorie: 400, protein: 30, carb: 40, fat: 10, content: '', status: 1 } }
+function blank() { return { name: '', goal: 1, tags: [], cover: '', calorie: 400, protein: 30, carb: 40, fat: 10, content: '', status: 1 } }
 
 async function load() {
   const data = await request.get('/admin/recipe', {

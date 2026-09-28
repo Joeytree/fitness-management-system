@@ -19,22 +19,15 @@ public class PlanCreateRequest {
     private String cycle;
     private String tags;
 
-    @NotEmpty(message = "请至少添加一个动作")
-    private List<PlanActionItem> actions;
+    @NotEmpty(message = "请至少添加一门课程")
+    private List<CourseItem> courses;
 
     @Data
-    public static class PlanActionItem {
+    public static class CourseItem {
         @NotNull
-        private Long actionId;
-        /** 训练天序号（1-7），缺省为 1 */
+        private Long courseId;
+        /** 训练天序号（1-7），每天一门课，缺省为 1 */
         private Integer dayNo;
-        @NotNull
-        private Integer sets;
-        @NotNull
-        private Integer reps;
-        /** 默认负重（kg），空=自重 */
-        private BigDecimal weight;
-        private Integer rest;
         private Integer sort;
     }
 }

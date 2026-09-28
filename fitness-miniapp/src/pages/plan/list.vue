@@ -15,15 +15,23 @@
 
     <view class="section-title">我的计划</view>
     <view v-for="p in list" :key="p.id" class="plan-card" @click="goDetail(p)">
-      <view class="plan-head">
-        <view class="plan-name">{{ p.name }}</view>
-        <view class="pill" :class="statusClass(p)">{{ statusText(p) }}</view>
+      <view class="cover" :style="{ background: coverGrad(p.goal) }">
+        <image v-if="p.cover" class="cover-img" :src="fullUrl(p.cover)" mode="aspectFill" lazy-load />
+        <view class="cover-shade" />
+        <text v-if="!p.cover" class="cover-emoji">{{ coverEmoji(p.goal) }}</text>
+        <view class="cover-info">
+          <view class="cover-title">{{ p.name }}</view>
+          <view class="cover-meta">
+            <text>{{ p.cycle || '周期训练' }}</text>
+            <text class="dot">·</text>
+            <text>{{ goalText(p.goal) }}</text>
+          </view>
+        </view>
       </view>
-      <view class="muted plan-cycle">{{ p.cycle || '未设定' }} · {{ goalText(p.goal) }}</view>
-      <view class="bar">
-        <view class="bar-fill" :style="{ width: progressOf(p) + '%' }"></view>
+      <view class="plan-progress">
+        <view class="bar"><view class="bar-fill" :style="{ width: progressOf(p) + '%' }"></view></view>
+        <view class="bar-tip muted">{{ progressOf(p) }}% · {{ countByPlan(p.id) }} 次打卡</view>
       </view>
-      <view class="bar-tip muted">{{ progressOf(p) }}% · {{ countByPlan(p.id) }} 次打卡</view>
     </view>
     <view v-if="!list.length" class="empty muted">还没有计划，去套用模板吧</view>
 
@@ -34,6 +42,15 @@
 <script>
 import { get } from '../../utils/request'
 import { goalText } from '../../utils/index'
+import { fullUrl } from '../../utils/config'
+
+const PLAN_STYLE = {
+  1: { grad: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', emoji: '🏋️' },
+  2: { grad: 'linear-gradient(135deg,#f97316,#ea580c)', emoji: '🔥' },
+  3: { grad: 'linear-gradient(135deg,#a855f7,#7e22ce)', emoji: '✨' },
+  4: { grad: 'linear-gradient(135deg,#10b981,#059669)', emoji: '💪' }
+}
+const FALLBACK = { grad: 'linear-gradient(135deg,#34d399,#10b981)', emoji: '🎯' }
 
 export default {
   data() {
@@ -48,6 +65,13 @@ export default {
   },
   methods: {
     goalText,
+    fullUrl,
+    coverGrad(goal) {
+      return (PLAN_STYLE[goal] || FALLBACK).grad
+    },
+    coverEmoji(goal) {
+      return (PLAN_STYLE[goal] || FALLBACK).emoji
+    },
     async load() {
       try {
         this.list = await get('/plan')
@@ -133,8 +157,69 @@ export default {
 .plan-card {
   background: #fff;
   border-radius: 28rpx;
-  padding: 28rpx;
-  box-shadow: 0 6rpx 20rpx rgba(16, 185, 129, 0.06);
+  overflow: hidden;
+  box-shadow: 0 6rpx 20rpx rgba(16, 185, 129, 0.08);
+  margin-bottom: 20rpx;
+}
+.cover {
+  position: relative;
+  height: 320rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cover-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.cover-shade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 40%, rgba(0, 0, 0, 0.6) 100%);
+  z-index: 1;
+}
+.cover-emoji {
+  position: relative;
+  z-index: 1;
+  font-size: 120rpx;
+  filter: drop-shadow(0 8rpx 16rpx rgba(0, 0, 0, 0.3));
+}
+.cover-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 24rpx 20rpx;
+  color: #fff;
+}
+.cover-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.35;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.4);
+}
+.cover-meta {
+  margin-top: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  opacity: 0.95;
+  text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.4);
+}
+.cover-meta .dot {
+  opacity: 0.7;
+}
+.plan-progress {
+  padding: 20rpx 24rpx 24rpx;
 }
 .plan-head {
   display: flex;

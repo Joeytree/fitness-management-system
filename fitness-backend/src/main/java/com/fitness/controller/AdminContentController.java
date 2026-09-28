@@ -3,6 +3,7 @@ package com.fitness.controller;
 import com.fitness.common.PageResult;
 import com.fitness.common.Result;
 import com.fitness.dto.CourseAdminRequest;
+import com.fitness.dto.StatusRequest;
 import com.fitness.entity.Action;
 import com.fitness.entity.Article;
 import com.fitness.entity.Course;
@@ -71,8 +72,8 @@ public class AdminContentController {
     }
 
     @PutMapping("/course/{id}/status")
-    public Result<Void> updateCourseStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        contentService.updateCourseStatus(id, Integer.valueOf(String.valueOf(body.get("status"))));
+    public Result<Void> updateCourseStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
+        contentService.updateCourseStatus(id, req.getStatus());
         return Result.ok();
     }
 
@@ -108,8 +109,8 @@ public class AdminContentController {
     }
 
     @PutMapping("/action/{id}/status")
-    public Result<Void> updateActionStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        contentService.updateActionStatus(id, Integer.valueOf(String.valueOf(body.get("status"))));
+    public Result<Void> updateActionStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
+        contentService.updateActionStatus(id, req.getStatus());
         return Result.ok();
     }
 

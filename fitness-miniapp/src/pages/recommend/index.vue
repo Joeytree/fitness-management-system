@@ -1,26 +1,53 @@
 <template>
   <view class="page-pad">
-    <!-- 为什么推荐 -->
-    <view class="why-card">
-      <view class="why-title">为什么推荐给你？</view>
-      <view class="why-text">基于你的目标（{{ userGoal }}） + 水平（{{ userLevel }}）+ 标签命中生成标签，与内容标签加权打分（目标+3、水平+2、部位+1）。</view>
+    <!-- 偏好引导卡（preferParts 缺失时） -->
+    <view v-if="loaded && !profile.hasProfile" class="guide-card">
+      <view class="guide-title">完善偏好，推荐更精准</view>
+      <view class="guide-text">选择你常练的部位（可多选）</view>
+      <view class="part-grid">
+        <view
+          v-for="p in PARTS"
+          :key="p"
+          class="part-chip"
+          :class="{ on: selectedParts.includes(p) }"
+          @click="togglePart(p)"
+        >{{ p }}</view>
+      </view>
+      <button class="guide-save" :disabled="!selectedParts.length" @click="saveParts">保存偏好</button>
+    </view>
+
+    <!-- 画像卡（已有偏好） -->
+    <view v-else-if="loaded" class="profile-card">
+      <view class="profile-title">你的推荐画像</view>
+      <view class="profile-row">
+        <text class="profile-item">目标：{{ goalText(profile.goal) || '未设置' }}</text>
+        <text class="profile-item">水平：{{ levelText(profile.level) || '未设置' }}</text>
+      </view>
+      <view class="profile-row">
+        <text class="profile-item">常练：{{ partsText }}</text>
+      </view>
+      <view class="profile-row">
+        <text class="profile-item">近 30 天训练 {{ profile.trainFrequency || 0 }} 次</text>
+        <text class="profile-item">平均 {{ profile.avgDuration || 0 }} 分钟</text>
+      </view>
     </view>
 
     <view class="tabs">
       <view class="tab" :class="{ active: type === 'plan' }" @click="switchType('plan')">推荐计划</view>
       <view class="tab" :class="{ active: type === 'recipe' }" @click="switchType('recipe')">推荐食谱</view>
+      <view class="tab" :class="{ active: type === 'course' }" @click="switchType('course')">推荐课程</view>
     </view>
 
     <view class="list">
       <view v-for="item in list" :key="item.id" class="rec-card" @click="goDetail(item)">
-        <view class="rec-thumb" :class="type === 'plan' ? 'thumb-plan' : 'thumb-recipe'">
+        <view class="rec-thumb" :class="thumbClass">
           <image v-if="item.cover" class="thumb-img" :src="fullUrl(item.cover)" mode="aspectFill" lazy-load />
-          <text v-else class="thumb-ico">{{ type === 'plan' ? '🎯' : '🥗' }}</text>
-          <text class="thumb-badge" :class="{ 'badge-alt': type !== 'plan' }">{{ type === 'plan' ? '官方精品' : '营养精选' }}</text>
+          <text v-else class="thumb-ico">{{ typeIco }}</text>
+          <text class="thumb-badge" :class="{ 'badge-alt': type === 'recipe' }">{{ badgeText }}</text>
         </view>
         <view class="rec-body">
           <view class="rec-name">{{ item.name }}</view>
-          <view class="rec-meta muted">{{ type === 'plan' ? (item.cycle || '周期训练计划') : (item.calorie + ' 千卡 · 营养食谱') }}</view>
+          <view class="rec-meta muted">{{ metaText(item) }}</view>
           <view class="rec-score muted">为你匹配 · 匹配分 {{ item.score }}</view>
           <view class="rec-bottom">
             <view class="rec-tags">
@@ -30,14 +57,14 @@
           </view>
         </view>
       </view>
-      <view v-if="!list.length" class="empty muted">暂无推荐</view>
+      <view v-if="loaded && !list.length" class="empty muted">暂无推荐</view>
     </view>
   </view>
 </template>
 
 <script>
-import { get, post } from '../../utils/request'
-import { getUserInfo, goalText, levelText } from '../../utils/index'
+import { get, post, put } from '../../utils/request'
+import { getUserInfo, goalText, levelText, PARTS } from '../../utils/index'
 import { fullUrl } from '../../utils/config'
 
 export default {
@@ -45,45 +72,94 @@ export default {
     return {
       type: 'plan',
       list: [],
-      user: {}
+      user: {},
+      profile: {},
+      loaded: false,
+      PARTS,
+      selectedParts: []
     }
   },
   computed: {
-    userGoal() {
-      return goalText(this.user.goal) || '未设置'
+    partsText() {
+      const p = this.profile.mergedParts || []
+      return p.length ? p.join(' · ') : '未设置'
     },
-    userLevel() {
-      return levelText(this.user.level) || '未设置'
+    thumbClass() {
+      return { plan: 'thumb-plan', recipe: 'thumb-recipe', course: 'thumb-course' }[this.type] || 'thumb-plan'
+    },
+    typeIco() {
+      return { plan: '🎯', recipe: '🥗', course: '🏋️' }[this.type] || '🎯'
+    },
+    badgeText() {
+      return { plan: '官方精品', recipe: '营养精选', course: '热门课程' }[this.type] || '官方精品'
     }
   },
   onShow() {
     this.user = getUserInfo()
+    this.loadProfile()
     this.load()
   },
   methods: {
     goalText,
     levelText,
     fullUrl,
+    metaText(item) {
+      if (this.type === 'plan') return item.cycle || '周期训练计划'
+      if (this.type === 'recipe') return (item.calorie || 0) + ' 千卡 · 营养食谱'
+      return (item.category || '') + ' · ' + (item.duration || 0) + ' 分钟'
+    },
     switchType(t) {
       this.type = t
       this.load()
     },
+    async loadProfile() {
+      try {
+        this.profile = await get('/recommend/profile')
+        this.selectedParts = (this.profile.preferParts || '').split(',').filter(Boolean)
+      } catch (e) {
+        this.profile = { hasProfile: false }
+      }
+      this.loaded = true
+    },
     async load() {
       try {
         this.list = await get('/recommend/' + this.type, { limit: 10 })
-      } catch (e) { /* 忽略 */ }
+      } catch (e) {
+        this.list = []
+      }
+    },
+    togglePart(p) {
+      const i = this.selectedParts.indexOf(p)
+      if (i >= 0) this.selectedParts.splice(i, 1)
+      else this.selectedParts.push(p)
+    },
+    async saveParts() {
+      if (!this.selectedParts.length) {
+        uni.showToast({ title: '请至少选择一个部位', icon: 'none' })
+        return
+      }
+      try {
+        await put('/user/profile', { preferParts: this.selectedParts.join(',') })
+        uni.showToast({ title: '偏好已保存', icon: 'success' })
+        this.loadProfile()
+        this.load()
+      } catch (e) { /* 已提示 */ }
     },
     goDetail(item) {
-      post('/recommend/feedback', { type: this.type === 'plan' ? 1 : 2, targetId: item.id, action: 'click' }).catch(() => {})
+      const typeMap = { plan: 1, recipe: 2, course: 3 }
+      post('/recommend/feedback', { type: typeMap[this.type], targetId: item.id, action: 'click' }).catch(() => {})
       if (this.type === 'plan') {
         uni.navigateTo({ url: '/pages/plan/template' })
-      } else {
+      } else if (this.type === 'recipe') {
         uni.navigateTo({ url: '/pages/recipe/detail?id=' + item.id })
+      } else {
+        uni.navigateTo({ url: '/pages/course/detail?id=' + item.id })
       }
     },
     async adopt(item) {
       try {
         await post(`/plan/template/${item.id}/adopt`)
+        post('/recommend/feedback', { type: 1, targetId: item.id, action: 'adopt' }).catch(() => {})
         uni.showToast({ title: '已套用，生成你的计划副本', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 600)
       } catch (e) { /* 已提示 */ }
@@ -93,22 +169,77 @@ export default {
 </script>
 
 <style>
-.why-card {
-  background: #ecfdf5;
-  border-radius: 24rpx;
-  padding: 28rpx;
+.page-pad {
+  padding: 24rpx;
+}
+.guide-card {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 28rpx;
+  padding: 32rpx;
   margin-bottom: 24rpx;
 }
-.why-title {
-  font-size: 28rpx;
+.guide-title {
+  font-size: 30rpx;
   font-weight: 700;
   color: #065f46;
 }
-.why-text {
-  margin-top: 12rpx;
+.guide-text {
+  margin-top: 8rpx;
   font-size: 24rpx;
   color: #4b5563;
-  line-height: 1.7;
+}
+.part-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+.part-chip {
+  padding: 12rpx 32rpx;
+  border-radius: 999rpx;
+  background: #fff;
+  font-size: 26rpx;
+  color: #4b5563;
+  border: 2rpx solid transparent;
+}
+.part-chip.on {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+  border-color: #10b981;
+}
+.guide-save {
+  margin-top: 24rpx;
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 999rpx;
+  line-height: 76rpx;
+}
+.guide-save[disabled] {
+  opacity: 0.5;
+}
+.guide-save::after {
+  border: none;
+}
+.profile-card {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+.profile-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+.profile-row {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 16rpx;
+}
+.profile-item {
+  font-size: 26rpx;
+  color: #4b5563;
 }
 .tabs {
   display: flex;
@@ -175,6 +306,9 @@ export default {
 }
 .thumb-recipe {
   background: linear-gradient(135deg, #fde68a, #fbbf24);
+}
+.thumb-course {
+  background: linear-gradient(135deg, #bfdbfe, #60a5fa);
 }
 .thumb-ico {
   font-size: 88rpx;

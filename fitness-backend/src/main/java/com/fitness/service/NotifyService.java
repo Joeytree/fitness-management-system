@@ -103,7 +103,7 @@ public class NotifyService {
                 .eq(Course::getUserId, userId).eq(Course::getStatus, 3)
                 .orderByDesc(Course::getId))
                 .forEach(c -> list.add(notification("course", "你提交的课程被驳回", c.getName(),
-                        null, c.getCreateTime())));
+                        c.getRejectReason(), c.getCreateTime())));
 
         return list;
     }

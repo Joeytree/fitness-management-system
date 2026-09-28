@@ -13,6 +13,61 @@ spring:
     url: jdbc:mysql://localhost:3306/fitness_management?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
+    # ==================== Druid 连接池 + 监控台 ====================
+    # 监控台地址：http://localhost:8081/druid  （注意：8080 被 Jenkins 占用，本项目后端跑 8081）
+    # 登录账号在下方 stat-view-servlet，或用环境变量 DRUID_STAT_USERNAME / DRUID_STAT_PASSWORD 覆盖
+    druid:
+      # ---- 连接池参数 ----
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      keep-alive: true
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      # ---- 过滤器链 ----
+      # stat = SQL/URI/Session/Spring 统计（监控台数据来源）
+      # wall = SQL 防火墙（监控台「SQL防火墙」菜单）
+      # slf4j = 慢 SQL 写入应用日志
+      filters: stat,wall,slf4j
+      filter:
+        stat:
+          enabled: true
+          merge-sql: true            # 合并同结构 SQL（参数不同的合并为一条统计）
+          log-slow-sql: true         # 慢 SQL 打日志
+          slow-sql-millis: 500       # 慢 SQL 阈值（毫秒）；做实验想多抓几条可临时改小，如 10
+        wall:
+          enabled: true
+          config:
+            multi-statement-allow: false   # 禁止一次提交多条 SQL（防注入）
+            comment-allow: false           # 禁止 SQL 注释
+      # 注：慢SQL阈值只在上面的 filter.stat.slow-sql-millis 设置一次，
+      #     不要再写 connection-properties=druid.stat.slowSqlMillis=... 两处会互相覆盖
+      # ---- Spring 方法级监控（监控台「Spring监控」菜单）----
+      aop-patterns: com.fitness.service.*
+      # ---- 监控台 Servlet ----
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: ${DRUID_STAT_USERNAME:admin}
+        login-password: ${DRUID_STAT_PASSWORD:admin123}
+        reset-enable: false            # 禁止在页面上重置统计数据
+      # ---- Web 应用 / URI / Session 监控 ----
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        # 注意：这里**故意不排除 /druid/***
+        # 本项目用 JWT 无状态鉴权，业务代码全程不创建 HttpSession，故 Session 监控本来必然为空；
+        # 不排除 /druid/* 后，监控台自身的登录会话会被统计到，「Session监控」菜单才有数据可看。
+        # 若希望 URI 监控里不出现监控台自身的请求，可把 ",/druid/*" 加回下面的列表。
+        exclusions: "*.js,*.gif,*.jpg,*.jpeg,*.png,*.css,*.ico"
+        session-stat-enable: true
+        session-stat-max-count: 1000
+        profile-enable: true
   servlet:
     multipart:
       max-file-size: 50MB
@@ -25,7 +80,6 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: deleted
@@ -41,7 +95,8 @@ fitness:
     # Token 有效期 7 天
     expire-days: 7
   upload:
-    dir: ${user.dir}/upload
+    # 默认相对工作目录（需以 fitness-backend 为 CWD）；可用 FITNES_UPLOAD_DIR 环境变量指定绝对路径以摆脱 CWD 依赖
+    dir: ${FITNESS_UPLOAD_DIR:${user.dir}/upload}
   wechat:
     appid: ${WECHAT_APPID:wx6193281e02e83bc0}
     secret: ${WECHAT_APPSECRET:}

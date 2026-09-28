@@ -63,9 +63,9 @@
         <el-row :gutter="12">
           <el-col :span="12"><el-form-item label="热量(千卡)"><el-input-number v-model="form.calorie" :min="0" :max="1000" :precision="1" style="width:100%" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="计量单位"><el-input v-model="form.unit" placeholder="g / 碗 / 个" /></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="蛋白(g)"><el-input-number v-model="form.protein" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="碳水(g)"><el-input-number v-model="form.carb" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
-          <el-col :span="8"><el-form-item label="脂肪(g)"><el-input-number v-model="form.fat" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="蛋白(g)"><el-input-number v-model="form.protein" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="碳水(g)"><el-input-number v-model="form.carb" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="脂肪(g)"><el-input-number v-model="form.fat" :min="0" :max="100" :precision="1" style="width:100%" /></el-form-item></el-col>
         </el-row>
       </el-form>
       <template #footer>

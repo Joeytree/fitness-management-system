@@ -11,7 +11,7 @@
         </el-radio-group>
       </el-form-item>
       <el-form-item label="封面">
-        <el-input v-model="form.cover" placeholder="封面图片 URL（可选）" />
+        <ImageUpload v-model="form.cover" tip="支持 jpg/png/webp，≤2MB" />
       </el-form-item>
       <el-form-item label="正文" required>
         <div style="width:100%;border:1px solid #e5e8ef;border-radius:8px;overflow:hidden">
@@ -45,6 +45,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '../../api/request'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -1,9 +1,12 @@
 package com.fitness.controller;
 
 import com.fitness.common.Result;
+import com.fitness.dto.FeedbackRequest;
 import com.fitness.security.RequireLogin;
 import com.fitness.security.UserContext;
+import com.fitness.service.RecommendProfileService;
 import com.fitness.service.RecommendService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +27,7 @@ import java.util.Map;
 public class RecommendController {
 
     private final RecommendService recommendService;
+    private final RecommendProfileService recommendProfileService;
 
     @GetMapping("/plan")
     @RequireLogin
@@ -37,13 +41,22 @@ public class RecommendController {
         return Result.ok(recommendService.recommendRecipes(UserContext.getUserId(), limit));
     }
 
+    @GetMapping("/course")
+    @RequireLogin
+    public Result<List<Map<String, Object>>> courses(@RequestParam(defaultValue = "5") int limit) {
+        return Result.ok(recommendService.recommendCourses(UserContext.getUserId(), limit));
+    }
+
+    @GetMapping("/profile")
+    @RequireLogin
+    public Result<Map<String, Object>> profile() {
+        return Result.ok(recommendProfileService.profile(UserContext.getUserId()));
+    }
+
     @PostMapping("/feedback")
     @RequireLogin
-    public Result<Void> feedback(@RequestBody Map<String, Object> body) {
-        int type = Integer.parseInt(String.valueOf(body.get("type")));
-        Long targetId = Long.valueOf(String.valueOf(body.get("targetId")));
-        String action = String.valueOf(body.get("action"));
-        recommendService.feedback(UserContext.getUserId(), type, targetId, action);
+    public Result<Void> feedback(@Valid @RequestBody FeedbackRequest req) {
+        recommendService.feedback(UserContext.getUserId(), req.getType(), req.getTargetId(), req.getAction());
         return Result.ok();
     }
 }

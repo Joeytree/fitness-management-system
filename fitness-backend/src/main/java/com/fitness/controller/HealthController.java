@@ -2,6 +2,7 @@ package com.fitness.controller;
 
 import com.fitness.common.Result;
 import com.fitness.dto.BodyDataRequest;
+import com.fitness.dto.CheckInRequest;
 import com.fitness.dto.HealthGoalRequest;
 import com.fitness.entity.BodyData;
 import com.fitness.entity.CheckIn;
@@ -75,11 +76,8 @@ public class HealthController {
 
     @PostMapping("/checkin")
     @RequireLogin
-    public Result<CheckIn> checkIn(@RequestBody Map<String, Object> body) {
-        Long planId = body.get("planId") != null ? Long.valueOf(body.get("planId").toString()) : null;
-        Integer duration = body.get("duration") != null ? Integer.valueOf(body.get("duration").toString()) : null;
-        Integer calorie = body.get("calorie") != null ? Integer.valueOf(body.get("calorie").toString()) : null;
-        return Result.ok(healthService.checkIn(UserContext.getUserId(), planId, duration, calorie));
+    public Result<CheckIn> checkIn(@Valid @RequestBody CheckInRequest req) {
+        return Result.ok(healthService.checkIn(UserContext.getUserId(), req.getPlanId(), req.getDuration(), req.getCalorie()));
     }
 
     @GetMapping("/checkin")

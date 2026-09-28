@@ -32,42 +32,52 @@ public class JwtInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 可选登录态：尝试解析 Token 并校验状态
-        String token = resolveToken(request);
-        if (token != null) {
-            String role = jwtUtil.getRole(token);
-            Long userId = jwtUtil.getUserId(token);
-            if (userId != null && "admin".equals(role)) {
-                Admin admin = adminMapper.selectById(userId);
-                if (admin != null && admin.getStatus() != null && admin.getStatus() == 1) {
-                    UserContext.set(userId, "admin");
-                }
-            } else if (userId != null) {
-                User user = userMapper.selectById(userId);
-                if (user != null && user.getStatus() != null && user.getStatus() == 1) {
-                    UserContext.set(userId, "user");
+        try {
+            // 防御性清理：确保上一个请求若因异常残留身份，本次先清空
+            UserContext.clear();
+
+            // 可选登录态：尝试解析 Token 并校验状态
+            String token = resolveToken(request);
+            if (token != null) {
+                String role = jwtUtil.getRole(token);
+                Long userId = jwtUtil.getUserId(token);
+                if (userId != null && "admin".equals(role)) {
+                    Admin admin = adminMapper.selectById(userId);
+                    if (admin != null && admin.getStatus() != null && admin.getStatus() == 1) {
+                        UserContext.set(userId, "admin");
+                    }
+                } else if (userId != null) {
+                    User user = userMapper.selectById(userId);
+                    if (user != null && user.getStatus() != null && user.getStatus() == 1) {
+                        UserContext.set(userId, "user");
+                    }
                 }
             }
-        }
 
-        boolean needLogin = handlerMethod.hasMethodAnnotation(RequireLogin.class)
-                || handlerMethod.getBeanType().isAnnotationPresent(RequireLogin.class);
-        boolean needAdmin = handlerMethod.hasMethodAnnotation(RequireAdmin.class)
-                || handlerMethod.getBeanType().isAnnotationPresent(RequireAdmin.class);
+            boolean needLogin = handlerMethod.hasMethodAnnotation(RequireLogin.class)
+                    || handlerMethod.getBeanType().isAnnotationPresent(RequireLogin.class);
+            boolean needAdmin = handlerMethod.hasMethodAnnotation(RequireAdmin.class)
+                    || handlerMethod.getBeanType().isAnnotationPresent(RequireAdmin.class);
 
-        if (needAdmin) {
-            if (!UserContext.isAdmin()) {
-                throw new BusinessException(ResultCode.UNAUTHORIZED, "请使用管理员账号登录");
+            if (needAdmin) {
+                if (!UserContext.isAdmin()) {
+                    throw new BusinessException(ResultCode.UNAUTHORIZED, "请使用管理员账号登录");
+                }
+                return true;
+            }
+            if (needLogin) {
+                if (UserContext.getUserId() == null || UserContext.isAdmin()) {
+                    throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录，请先登录");
+                }
+                return true;
             }
             return true;
+        } catch (RuntimeException e) {
+            // 关键修复（ISS-012）：preHandle 抛异常时 Spring 不会回调 afterCompletion，
+            // 必须在此清理 ThreadLocal，否则身份残留到同线程的下一个请求。
+            UserContext.clear();
+            throw e;
         }
-        if (needLogin) {
-            if (UserContext.getUserId() == null || UserContext.isAdmin()) {
-                throw new BusinessException(ResultCode.UNAUTHORIZED, "未登录，请先登录");
-            }
-            return true;
-        }
-        return true;
     }
 
     @Override

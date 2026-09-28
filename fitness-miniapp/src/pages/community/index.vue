@@ -37,6 +37,7 @@
         </view>
       </view>
       <view v-if="!list.length" class="empty muted">暂无动态，去发布第一条吧</view>
+      <view v-else class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
     </view>
 
     <!-- 发布按钮 -->
@@ -47,12 +48,16 @@
 <script>
 import { get, post, del } from '../../utils/request'
 import { avatarColor, avatarText, relativeTime } from '../../utils/index'
+import { fullUrl } from '../../utils/config'
 
 export default {
   data() {
     return {
       tab: 'recommend',
-      list: []
+      list: [],
+      page: 1,
+      hasMore: true,
+      loading: false
     }
   },
   onShow() {
@@ -60,6 +65,9 @@ export default {
       this.getTabBar().init(2)
     }
     this.load()
+  },
+  onReachBottom() {
+    this.loadMore()
   },
   methods: {
     avatarColor,
@@ -69,15 +77,35 @@ export default {
       this.load()
     },
     imageList(images) {
-      if (Array.isArray(images)) return images
-      return (images || '').split(',').filter(Boolean)
+      const arr = Array.isArray(images) ? images : (images || '').split(',').filter(Boolean)
+      return arr.map(fullUrl)
     },
     rel(t) { return relativeTime(t) },
     async load() {
+      this.page = 1
+      this.hasMore = true
+      this.loading = false
       try {
         const data = await get('/moment', { tab: this.tab, page: 1, pageSize: 20 })
         this.list = data.list || []
+        this.hasMore = this.list.length < (data.total || 0)
       } catch (e) { /* 忽略 */ }
+    },
+    async loadMore() {
+      if (this.loading || !this.hasMore) return
+      this.loading = true
+      try {
+        const data = await get('/moment', { tab: this.tab, page: this.page + 1, pageSize: 20 })
+        const list = data.list || []
+        if (list.length) {
+          this.list = this.list.concat(list)
+          this.page += 1
+          this.hasMore = this.list.length < (data.total || 0)
+        } else {
+          this.hasMore = false
+        }
+      } catch (e) { /* 忽略 */ }
+      this.loading = false
     },
     async like(m) {
       try {
@@ -203,5 +231,11 @@ export default {
 .empty {
   text-align: center;
   padding: 100rpx 0;
+}
+.load-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 </style>

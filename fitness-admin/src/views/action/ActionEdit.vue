@@ -46,7 +46,7 @@
         </el-col>
         <el-col :span="24" v-if="form.mediaType">
           <el-form-item label="媒体地址">
-            <el-input v-model="form.mediaUrl" placeholder="媒体 URL（动图 / 视频 / 图片）" />
+            <ImageUpload v-model="form.mediaUrl" accept="image/*,video/*" :max-size-m-b="10" tip="支持动图/图片/视频，≤10MB" show-manual />
             <div class="form-tip" style="width:100%">动作详情页应展示文字步骤 + 动图/视频 + 注意事项</div>
           </el-form-item>
         </el-col>
@@ -72,10 +72,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '../../api/request'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const route = useRoute()
 const router = useRouter()
-const parts = ['胸', '背', '肩', '手臂', '腿', '臀', '核心', '全身']
+const parts = ['胸', '背', '肩', '手臂', '腿', '核心', '全身']
 const diffDict = { 1: '入门', 2: '进阶', 3: '高级' }
 const mediaTypeDict = { 1: '动图', 2: '视频', 3: '图片' }
 const editId = route.query.id

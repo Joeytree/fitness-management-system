@@ -32,6 +32,8 @@ public class User {
     private Integer goal;
     private Integer level;
     private String tags;
+    /** 偏好部位，逗号分隔（推荐引导填写） */
+    private String preferParts;
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

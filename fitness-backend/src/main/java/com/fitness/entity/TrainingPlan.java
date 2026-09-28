@@ -22,6 +22,8 @@ public class TrainingPlan {
     private Integer level;
     private String cycle;
     private String tags;
+    /** 封面图（相对路径 /upload/xxx，套用模板时从模板继承） */
+    private String cover;
     private Integer isTemplate;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

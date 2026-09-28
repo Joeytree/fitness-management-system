@@ -16,6 +16,7 @@
       <view class="n-time muted">{{ a.createTime }}</view>
     </view>
     <view v-if="!notices.length" class="empty muted">暂无公告</view>
+    <view v-if="notices.length" class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
   </view>
 </template>
 
@@ -26,21 +27,47 @@ export default {
   data() {
     return {
       audits: [],
-      notices: []
+      notices: [],
+      page: 1,
+      hasMore: true,
+      loading: false
     }
   },
   onShow() {
     this.load()
   },
+  onReachBottom() {
+    this.loadMore()
+  },
   methods: {
     async load() {
+      this.page = 1
+      this.hasMore = true
+      this.loading = false
       try {
         this.audits = await get('/notifications')
       } catch (e) { /* 忽略 */ }
       try {
         const data = await get('/article', { type: 3, page: 1, pageSize: 20 })
         this.notices = data.list || []
+        this.hasMore = this.notices.length < (data.total || 0)
       } catch (e) { /* 忽略 */ }
+    },
+    async loadMore() {
+      if (this.loading || !this.hasMore) return
+      this.loading = true
+      try {
+        const data = await get('/article', { type: 3, page: this.page + 1, pageSize: 20 })
+        const list = data.list || []
+        if (list.length) {
+          this.notices = this.notices.concat(list)
+          this.page += 1
+          this.hasMore = this.notices.length < (data.total || 0)
+        } else {
+          this.hasMore = false
+        }
+      } catch (e) { /* 忽略 */ }
+      this.loading = false
     },
     goDetail(a) {
       uni.navigateTo({ url: '/pages/knowledge/detail?id=' + a.id })
@@ -81,5 +108,11 @@ export default {
 .empty {
   text-align: center;
   padding: 60rpx 0;
+}
+.load-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 </style>

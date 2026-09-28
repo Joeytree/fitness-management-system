@@ -40,31 +40,7 @@
         </el-col>
         <el-col :span="24">
           <el-form-item label="封面图">
-            <el-upload
-              class="cover-uploader"
-              action="/api/admin/upload"
-              :headers="uploadHeaders"
-              :show-file-list="false"
-              :before-upload="beforeCoverUpload"
-              :on-success="onCoverSuccess"
-              :on-error="onCoverError"
-              accept="image/*"
-              name="file"
-            >
-              <div v-if="form.cover" class="cover-preview">
-                <img :src="form.cover" class="cover-img" />
-                <div class="cover-mask">
-                  <el-icon><Refresh /></el-icon>
-                  <span>点击替换</span>
-                </div>
-              </div>
-              <div v-else class="cover-empty">
-                <el-icon class="cover-icon"><Plus /></el-icon>
-                <div class="cover-text">点击上传封面图</div>
-                <div class="cover-sub">支持 jpg/png/webp，≤2MB</div>
-              </div>
-            </el-upload>
-            <div class="form-tip" v-if="form.cover">当前封面：{{ form.cover }}　<el-link type="danger" :underline="false" @click="form.cover = ''">清除</el-link></div>
+            <ImageUpload v-model="form.cover" tip="支持 jpg/png/webp，≤2MB" />
           </el-form-item>
         </el-col>
         <el-col :span="24">
@@ -80,8 +56,8 @@
               </el-select>
               <span class="filter-stat">已显示 {{ filteredActions.length }} / {{ actions.length }} 个动作</span>
             </div>
-            <el-select v-model="selectedIds" multiple filterable collapse-tags collapse-tags-tooltip placeholder="从动作库中选择，可多选" style="width:100%">
-              <el-option v-for="a in filteredActions" :key="a.id" :label="a.name + '（' + a.part + '）'" :value="a.id" />
+            <el-select v-model="selectedIds" multiple filterable remote reserve-keyword :remote-method="searchActions" :loading="actionLoading" collapse-tags collapse-tags-tooltip placeholder="输入关键字搜索动作，可多选" style="width:100%">
+              <el-option v-for="a in selectOptions" :key="a.id" :label="a.name + '（' + a.part + '）'" :value="a.id" />
             </el-select>
             <div class="action-items" v-if="form.actionItems && form.actionItems.length">
               <div class="action-item" v-for="item in form.actionItems" :key="item.actionId">
@@ -122,8 +98,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
 import request from '../../api/request'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,9 +116,9 @@ const editId = route.query.id
 const isEdit = ref(!!editId)
 const form = ref({ name: '', category: '增肌', part: '', difficulty: 1, duration: 30, calorie: 200, intro: '', cover: '', actionIds: [], actionItems: [], status: 0 })
 const selectedIds = ref([])
-
-// 上传时携带 JWT（/api/upload 是 @RequireLogin 接口）
-const uploadHeaders = computed(() => ({ Authorization: 'Bearer ' + (localStorage.getItem('admin_token') || '') }))
+const actionLoading = ref(false)
+// id -> 动作对象，累积所有加载过的动作（含远程搜索与已选补查），保证已选动作名称始终可显示
+const actionMap = ref({})
 
 const filteredActions = computed(() => actions.value.filter(a => {
   if (filterPart.value && a.part !== filterPart.value) return false
@@ -150,9 +126,37 @@ const filteredActions = computed(() => actions.value.filter(a => {
   return true
 }))
 
+// 下拉选项 = 当前候选（前端部位/器械过滤）+ 已选动作（确保已选项显示名称而非裸 id）
+const selectOptions = computed(() => {
+  const opts = [...filteredActions.value]
+  const ids = new Set(opts.map(a => a.id))
+  for (const id of selectedIds.value) {
+    if (!ids.has(id) && actionMap.value[id]) opts.push(actionMap.value[id])
+  }
+  return opts
+})
+
+function cacheActions(list) {
+  (list || []).forEach(a => { actionMap.value[a.id] = a })
+}
+
 async function loadActions() {
   const data = await request.get('/admin/action', { params: { page: 1, pageSize: 100 } })
   actions.value = data.list || []
+  cacheActions(actions.value)
+}
+
+// 关键字远程搜索（后端 listAction 已支持 keyword），避免一次渲染上千个 option
+async function searchActions(keyword) {
+  const kw = (keyword || '').trim()
+  actionLoading.value = true
+  try {
+    const data = await request.get('/admin/action', { params: { keyword: kw || undefined, page: 1, pageSize: 100 } })
+    actions.value = data.list || []
+    cacheActions(actions.value)
+  } finally {
+    actionLoading.value = false
+  }
 }
 
 async function loadCourse() {
@@ -161,6 +165,13 @@ async function loadCourse() {
   const items = data.actionItems || []
   form.value = { ...data.course, actionItems: items }
   selectedIds.value = items.map(i => i.actionId)
+  // 补查已选动作名称（远程搜索下，已选动作可能不在初始 100 条里）
+  const missing = items.map(i => i.actionId).filter(id => !actionMap.value[id])
+  if (missing.length) {
+    await Promise.all(missing.map(async id => {
+      try { actionMap.value[id] = await request.get(`/admin/action/${id}`) } catch (e) { /* 忽略单个失败 */ }
+    }))
+  }
 }
 
 // 已选动作 id 变化时，同步明细列表（新增补默认组数/次数，删除移除）
@@ -178,33 +189,12 @@ watch(selectedIds, (newIds) => {
 })
 
 function actionName(id) {
-  const a = actions.value.find(x => x.id === id)
+  const a = actionMap.value[id]
   return a ? `${a.name}（${a.part}）` : `动作#${id}`
 }
 
 function removeAction(id) {
   selectedIds.value = selectedIds.value.filter(x => x !== id)
-}
-
-function beforeCoverUpload(file) {
-  const ok = file.type.startsWith('image/')
-  if (!ok) ElMessage.warning('只支持图片格式')
-  const lt2M = file.size / 1024 / 1024 < 2
-  if (!lt2M) ElMessage.warning('封面图需 ≤ 2MB')
-  return ok && lt2M
-}
-
-function onCoverSuccess(res) {
-  if (res && res.code === 0 && res.data && res.data.url) {
-    form.value.cover = res.data.url
-    ElMessage.success('封面上传成功')
-  } else {
-    ElMessage.error(res?.message || '上传失败')
-  }
-}
-
-function onCoverError() {
-  ElMessage.error('封面上传失败，请重试')
 }
 
 async function save() {

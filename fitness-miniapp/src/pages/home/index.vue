@@ -103,6 +103,22 @@
         </view>
       </view>
     </view>
+
+    <!-- 推荐课程 -->
+    <view class="section-title" @click="go('/pages/recommend/index')">推荐课程 <text class="more">更多 ›</text></view>
+    <view class="rec-list">
+      <view v-for="c in courses" :key="c.id" class="rec-card" @click="clickCourse(c)">
+        <view class="card-thumb thumb-course">
+          <image v-if="c.cover" class="thumb-img" :src="fullUrl(c.cover)" mode="aspectFill" lazy-load />
+          <text v-else class="thumb-ico">🏋️</text>
+          <text class="thumb-badge">热门课程</text>
+        </view>
+        <view class="card-body">
+          <view class="plan-name">{{ c.name }}</view>
+          <view class="card-sub muted">{{ c.category || '' }} · {{ c.duration || 0 }} 分钟</view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -117,6 +133,7 @@ export default {
       user: {},
       plans: [],
       recipes: [],
+      courses: [],
       notices: [],
       summary: {},
       checkin: {},
@@ -144,6 +161,9 @@ export default {
         this.recipes = await get('/recommend/recipe', { limit: 3 })
       } catch (e) {}
       try {
+        this.courses = await get('/recommend/course', { limit: 3 })
+      } catch (e) {}
+      try {
         const data = await get('/article', { type: 3, page: 1, pageSize: 5 })
         this.notices = data.list || []
       } catch (e) {}
@@ -166,15 +186,21 @@ export default {
       } catch (e) { /* 已提示 */ }
     },
     go(url) {
-      uni.navigateTo({ url })
+      const TABS = ['/pages/home/index', '/pages/course/index', '/pages/community/index', '/pages/mine/index']
+      if (TABS.includes(url)) uni.switchTab({ url })
+      else uni.navigateTo({ url })
     },
     clickPlan(p) {
       post('/recommend/feedback', { type: 1, targetId: p.id, action: 'click' }).catch(() => {})
-      this.go('/pages/plan/template')
+      this.go('/pages/plan/detail?id=' + p.id)
     },
     clickRecipe(r) {
       post('/recommend/feedback', { type: 2, targetId: r.id, action: 'click' }).catch(() => {})
       this.go('/pages/recipe/detail?id=' + r.id)
+    },
+    clickCourse(c) {
+      post('/recommend/feedback', { type: 3, targetId: c.id, action: 'click' }).catch(() => {})
+      this.go('/pages/course/detail?id=' + c.id)
     }
   }
 }
@@ -398,6 +424,9 @@ export default {
 }
 .thumb-recipe {
   background: linear-gradient(135deg, #fde68a, #fbbf24);
+}
+.thumb-course {
+  background: linear-gradient(135deg, #bfdbfe, #60a5fa);
 }
 .thumb-ico {
   font-size: 88rpx;

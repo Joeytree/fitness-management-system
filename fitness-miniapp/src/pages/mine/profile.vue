@@ -2,8 +2,12 @@
   <view class="page-pad">
     <view class="card">
       <view class="form-row">
-        <text class="label">头像 URL</text>
-        <input class="input" v-model="form.avatar" placeholder="头像图片链接（选填）" />
+        <text class="label">头像</text>
+        <view class="avatar-box" @click="chooseAvatar">
+          <image v-if="form.avatar" class="avatar-img" :src="fullUrl(form.avatar)" mode="aspectFill" />
+          <view v-else class="avatar-empty">＋</view>
+        </view>
+        <text class="avatar-tip muted">点击更换</text>
       </view>
       <view class="form-row">
         <text class="label">昵称</text>
@@ -54,6 +58,18 @@
           >{{ l.label }}</text>
         </view>
       </view>
+      <view class="form-row">
+        <text class="label">偏好部位</text>
+        <view class="radio-group">
+          <text
+            v-for="p in PARTS"
+            :key="p"
+            class="radio"
+            :class="{ on: selectedParts.includes(p) }"
+            @click="togglePart(p)"
+          >{{ p }}</text>
+        </view>
+      </view>
     </view>
 
     <button class="btn-primary save-btn" @click="save">保存（更新推荐标签）</button>
@@ -62,12 +78,16 @@
 
 <script>
 import { get, put } from '../../utils/request'
-import { setLogin, getUserInfo } from '../../utils/index'
+import { setLogin, getUserInfo, PARTS } from '../../utils/index'
+import { uploadFile } from '../../utils/upload'
+import { fullUrl } from '../../utils/config'
 
 export default {
   data() {
     return {
       form: { nickname: '', avatar: '', intro: '', birthday: '', gender: 1, height: 170, goal: 1, level: 1 },
+      PARTS,
+      selectedParts: [],
       goals: [
         { value: 1, label: '增肌' },
         { value: 2, label: '减脂' },
@@ -85,13 +105,33 @@ export default {
     this.load()
   },
   methods: {
+    fullUrl,
     async load() {
       try {
-        this.form = await get('/user/profile')
+        const data = await get('/user/profile')
+        this.form = data
+        this.selectedParts = (data.preferParts || '').split(',').map(s => s.trim()).filter(Boolean)
       } catch (e) { /* 忽略 */ }
     },
     onBirthday(e) {
       this.form.birthday = e.detail.value
+    },
+    togglePart(p) {
+      const i = this.selectedParts.indexOf(p)
+      if (i >= 0) this.selectedParts.splice(i, 1)
+      else this.selectedParts.push(p)
+    },
+    chooseAvatar() {
+      uni.chooseImage({
+        count: 1,
+        success: async (res) => {
+          const path = res.tempFilePaths && res.tempFilePaths[0]
+          if (!path) return
+          try {
+            this.form.avatar = await uploadFile(path)
+          } catch (e) { /* 已提示 */ }
+        }
+      })
     },
     async save() {
       try {
@@ -103,7 +143,8 @@ export default {
           gender: this.form.gender,
           height: Number(this.form.height),
           goal: this.form.goal,
-          level: this.form.level
+          level: this.form.level,
+          preferParts: this.selectedParts.join(',')
         })
         const token = uni.getStorageSync('token')
         setLogin(token, data)
@@ -155,6 +196,29 @@ export default {
 .radio.on {
   background: linear-gradient(135deg, #34d399, #10b981);
   color: #fff;
+}
+.avatar-box {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar-img {
+  width: 100%;
+  height: 100%;
+}
+.avatar-empty {
+  font-size: 56rpx;
+  color: #c0c4cc;
+}
+.avatar-tip {
+  margin-left: 20rpx;
+  font-size: 24rpx;
 }
 .save-btn {
   width: 100%;

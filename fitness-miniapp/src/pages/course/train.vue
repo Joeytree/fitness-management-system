@@ -2,8 +2,8 @@
   <view class="page" v-if="loaded">
     <!-- ============ 跟练中 / 休息中 ============ -->
     <view v-if="phase !== 'done'" class="train-page">
-      <!-- 顶部栏 -->
-      <view class="top-bar">
+      <!-- 顶部栏 — paddingTop 用动态 statusBarH 替代 env() -->
+      <view class="top-bar" :style="{ paddingTop: statusBarH + 'px' }">
         <view class="tb-btn" @click="askExit">
           <text class="tb-icon">←</text>
         </view>
@@ -42,13 +42,23 @@
           </view>
         </view>
 
-        <!-- 中央倒计时圈（已完成/总数） -->
-        <view class="ring-wrap" @click="tapOnce">
-          <canvas canvas-id="trainRing" class="ring-canvas" />
+        <!-- 中央圆圈 — 单击切暂停/继续 -->
+        <!-- 注意：mp-weixin 必须同时给 canvas-id 和 id，否则 createSelectorQuery().select('#xxx') 选不到 canvas 元素，boundingClientRect 返回 width=0，圆圈永远画不出来 -->
+        <view class="ring-wrap" :class="{ paused: paused }" @click="togglePause">
+          <canvas canvas-id="trainRing" id="trainRing" class="ring-canvas" />
           <view class="ring-center">
-            <text class="ring-num">{{ repsDone }} / {{ curReps }}</text>
-            <text class="ring-label">已完成 / 总数</text>
+            <text class="ring-num" v-if="!paused">{{ repsDone }} / {{ curReps }}</text>
+            <text class="ring-num paused-ico" v-else>⏸</text>
+            <text class="ring-label" v-if="!paused">点击圆圈暂停</text>
+            <text class="ring-label" v-else>已暂停 · 点击继续</text>
           </view>
+        </view>
+
+        <!-- 实时倒计时：距离下次自动 +1 还有多少秒 -->
+        <view class="countdown-row" v-if="!paused">
+          <text class="cd-ico">⏱</text>
+          <text class="cd-val">{{ repCountdown.toFixed(1) }}s</text>
+          <text class="cd-suf">后自动 +1</text>
         </view>
 
         <!-- 本组进度点 -->
@@ -60,8 +70,20 @@
           <text class="dots-num">{{ repsDone }}/{{ curReps }}</text>
         </view>
 
-        <!-- 下一动作预告 -->
-        <view class="next-card" v-if="nextPreview">
+        <!-- 主操作区：主报数 + 切换动作（点击弹本课动作选择器） -->
+        <view class="action-btns">
+          <view class="a-btn" @click="showIntervalPicker = true">
+            <text class="a-btn-ico">⏲</text>
+            <text class="a-btn-txt">主报数 {{ repInterval }} 秒</text>
+          </view>
+          <view class="a-btn a-btn-primary" @click="pickAction">
+            <text class="a-btn-ico">⏭</text>
+            <text class="a-btn-txt">切换动作</text>
+          </view>
+        </view>
+
+        <!-- 下一动作预告 — 可点击跳到该动作 -->
+        <view class="next-card" v-if="nextPreview" @click="jumpToNext">
           <text class="next-cap">下一个</text>
           <view class="next-row">
             <view class="next-avatar">{{ (nextPreview.name || '动')[0] }}</view>
@@ -73,17 +95,17 @@
           </view>
         </view>
 
-        <!-- 三按钮：左右圆形图标 + 中间暂停胶囊 -->
-        <view class="tri-bar">
-          <view class="tri-circle" @click="prevSet">
-            <text class="tri-circle-ico">|‹</text>
+        <!-- 底部三按钮：上一组 | 暂停 | 下一组 -->
+        <view class="bottom-bar">
+          <view class="bb-side" @click="goPrevSet">
+            <text class="bb-ico">|‹</text>
           </view>
-          <view class="tri-main" @click="togglePause">
-            <text class="tri-main-ico">{{ paused ? '▶' : '❚❚' }}</text>
-            <text class="tri-main-txt">{{ paused ? '继续' : '暂停' }}</text>
+          <view class="bb-main" @click="togglePause">
+            <text class="bb-ico-main">{{ paused ? '▶' : '‖' }}</text>
+            <text class="bb-txt">{{ paused ? '继续' : '暂停' }}</text>
           </view>
-          <view class="tri-circle" @click="nextSet">
-            <text class="tri-circle-ico">›|</text>
+          <view class="bb-side" @click="goNextSet">
+            <text class="bb-ico">›|</text>
           </view>
         </view>
       </block>
@@ -92,7 +114,7 @@
       <block v-else>
         <view class="rest-wrap">
           <view class="ring-wrap rest-ring">
-            <canvas canvas-id="restRing" class="ring-canvas" />
+            <canvas canvas-id="restRing" id="restRing" class="ring-canvas" />
             <view class="ring-center">
               <text class="ring-num rest-num">{{ restLeft }}</text>
               <text class="ring-label">秒</text>
@@ -125,7 +147,7 @@
     </view>
 
     <!-- ============ 完成总结 ============ -->
-    <view v-else class="done-page">
+    <view v-else class="done-page" :style="{ paddingTop: (statusBarH + 120) + 'px' }">
       <view class="done-badge">
         <text class="done-check">✓</text>
       </view>
@@ -155,7 +177,7 @@
       <button class="back-btn" @click="backToCourse">返回课程</button>
     </view>
 
-    <!-- ============ 动作要领弹窗（4 步掌握要点） ============ -->
+    <!-- ============ 动作要领弹窗 ============ -->
     <view v-if="showTips" class="mask" @click="showTips = false">
       <view class="sheet" @click.stop>
         <view class="sheet-head">
@@ -174,6 +196,60 @@
           </view>
         </scroll-view>
         <button class="sheet-btn" @click="showTips = false">知道了</button>
+      </view>
+    </view>
+
+    <!-- ============ 主报数间隔选择弹窗 ============ -->
+    <view v-if="showIntervalPicker" class="mask" @click="showIntervalPicker = false">
+      <view class="interval-sheet" @click.stop>
+        <text class="interval-title">设置自动报数间隔</text>
+        <text class="interval-sub">每隔指定时间自动 +1，无需手动点击</text>
+        <view class="interval-grid">
+          <view
+            v-for="s in intervalOptions"
+            :key="s"
+            class="interval-cell"
+            :class="{ on: s === repInterval }"
+            @click="changeInterval(s)"
+          >
+            <text class="ic-num">{{ s }}</text>
+            <text class="ic-unit">秒/次</text>
+          </view>
+        </view>
+        <button class="sheet-btn" @click="showIntervalPicker = false">完成</button>
+      </view>
+    </view>
+
+    <!-- ============ 切换动作弹窗：本节课全部动作可选 ============ -->
+    <view v-if="showActionPicker" class="mask" @click="showActionPicker = false">
+      <view class="picker-sheet" @click.stop>
+        <view class="sheet-head">
+          <view class="sheet-head-text">
+            <text class="sheet-title">切换动作</text>
+            <text class="sheet-subtitle">{{ course.name }} · 共 {{ actions.length }} 个动作</text>
+          </view>
+          <view class="sheet-close" @click="showActionPicker = false"><text>✕</text></view>
+        </view>
+        <scroll-view scroll-y class="sheet-body picker-body">
+          <view
+            v-for="(a, idx) in actions"
+            :key="a.id || idx"
+            class="pick-row"
+            :class="{ current: idx === actIdx }"
+            @click="jumpToAction(idx)"
+          >
+            <view class="pick-no">{{ idx + 1 }}</view>
+            <view class="pick-info">
+              <text class="pick-name">{{ a.name }}</text>
+              <text class="pick-meta">{{ a.sets || 1 }} 组 × {{ a.reps || 0 }} 次<text v-if="a.weight"> · {{ a.weight }}kg</text></text>
+            </view>
+            <text class="pick-tag" v-if="idx === actIdx">当前</text>
+            <text class="pick-chev" v-else>›</text>
+          </view>
+        </scroll-view>
+        <view class="sheet-btn-wrap">
+          <button class="sheet-btn" @click="showActionPicker = false">取消</button>
+        </view>
       </view>
     </view>
 
@@ -198,8 +274,12 @@ import { fullUrl } from '../../utils/config'
 
 export default {
   data() {
+    // mp-weixin 不支持 env(safe-area-inset-top)，必须用 statusBarHeight
+    let sbh = 0
+    try { sbh = uni.getSystemInfoSync().statusBarHeight || 0 } catch (e) {}
     return {
       id: null,
+      statusBarH: sbh,
       loaded: false,
       course: {},
       actions: [],
@@ -214,12 +294,21 @@ export default {
       recordId: null,
       showTips: false,
       showExit: false,
+      showIntervalPicker: false,   // 主报数间隔 sheet
+      showActionPicker: false,     // 切换动作 sheet（本节课全部动作）
+      repInterval: 1.8,            // 自动 +1 间隔（秒）
+      repCountdown: 1.8,           // 距下次 +1 倒计时
       stats: { duration: 0, calorie: 0, checkIn: false },
       mainTimer: null,
-      restTimer: null
+      restTimer: null,
+      repTimer: null               // 自动 +1 计时器
     }
   },
   computed: {
+    // 可选的报数间隔档位
+    intervalOptions() {
+      return [0.6, 1.0, 1.4, 1.8, 2.5, 3.5, 5.0]
+    },
     curAction() {
       return this.actions[this.actIdx] || {}
     },
@@ -247,11 +336,11 @@ export default {
     nextPreview() {
       // 当前动作还有下一组 → 预览同动作下一组；否则预览下一动作
       if (this.setIdx + 1 < this.curSets) {
-        return { name: this.curAction.name, sets: this.curSets, reps: this.curReps }
+        return { name: this.curAction.name, sets: this.curSets, reps: this.curReps, sameAction: true }
       }
       const next = this.actions[this.actIdx + 1]
       if (next) {
-        return { name: next.name, sets: next.sets || 1, reps: next.reps || 0 }
+        return { name: next.name, sets: next.sets || 1, reps: next.reps || 0, sameAction: false }
       }
       return null
     }
@@ -283,16 +372,18 @@ export default {
           return
         }
         this.loaded = true
-        this.$nextTick(() => {
+        // setTimeout 替代 $nextTick：$nextTick 在 mp-weixin 中可能在 canvas layout 前回调，rect.width=0
+        setTimeout(() => {
           this.drawRing('trainRing', 0)
           this.startSession()
-        })
+        }, 100)
       } catch (e) {
         setTimeout(() => uni.navigateBack(), 900)
       }
     },
     async startSession() {
       this.startMainTimer()
+      this.startRepTimer()
       try {
         const rec = await post('/training/start', { planId: Number(this.id) })
         this.recordId = rec.id
@@ -311,9 +402,13 @@ export default {
     clearRestTimer() {
       if (this.restTimer) { clearInterval(this.restTimer); this.restTimer = null }
     },
+    clearRepTimer() {
+      if (this.repTimer) { clearInterval(this.repTimer); this.repTimer = null }
+    },
     clearTimers() {
       this.clearMainTimer()
       this.clearRestTimer()
+      this.clearRepTimer()
     },
     formatClock(sec) {
       const m = Math.floor(sec / 60)
@@ -321,10 +416,14 @@ export default {
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     },
     // ===== 圆环 =====
-    drawRing(canvasId, progress) {
+// mp-weixin canvas-id 不等同于 id 属性，selector 偶尔拿不到 rect.width；做 12 次重试确保圆圈画出来
+    drawRing(canvasId, progress, retry = 0) {
       const query = uni.createSelectorQuery().in(this)
       query.select('#' + canvasId).boundingClientRect(rect => {
-        if (!rect || !rect.width) return
+        if (!rect || !rect.width) {
+          if (retry < 12) setTimeout(() => this.drawRing(canvasId, progress, retry + 1), 80)
+          return
+        }
         const ctx = uni.createCanvasContext(canvasId, this)
         const c = rect.width / 2
         const r = c - 9
@@ -347,41 +446,122 @@ export default {
         ctx.draw()
       }).exec()
     },
-    // ===== 跟练交互 =====
-    tapOnce() {
-      if (this.paused) return
-      if (this.repsDone >= this.curReps) {
-        uni.showToast({ title: '本组已完成，点下一组', icon: 'none' })
-        return
-      }
+    // ===== 自动报数（核心：每 repInterval 秒 repsDone +1） =====
+    startRepTimer() {
+      this.clearRepTimer()
+      this.repCountdown = this.repInterval
+      this.repTimer = setInterval(() => {
+        if (this.paused || this.phase !== 'train') return
+        // 0.1s 精度倒数
+        this.repCountdown = Math.max(0, +(this.repCountdown - 0.1).toFixed(1))
+        if (this.repCountdown <= 0) {
+          this.autoCount()
+          this.repCountdown = this.repInterval
+        }
+      }, 100)
+    },
+    autoCount() {
+      if (this.repsDone >= this.curReps) return
       this.repsDone++
       this.drawRing('trainRing', this.curReps ? this.repsDone / this.curReps : 0)
+      // 本组完成 → 仅在最后一 +1 时给一次震动反馈（不再每次都震）
+      if (this.repsDone >= this.curReps) {
+        try { uni.vibrateShort({ type: 'medium' }) } catch (e) {}
+        this.clearRepTimer()
+        // 短延迟让用户感知"最后一个 +1"已落定
+        setTimeout(() => this.completeSet(), 400)
+      }
     },
-    prevSet() {
+    changeInterval(s) {
+      this.repInterval = s
+      this.repCountdown = s
+      // 间隔变化时立即重启 tick
+      if (this.phase === 'train' && !this.paused) {
+        this.startRepTimer()
+      }
+    },
+    // ===== 切换动作（弹本节课全部动作可选项） =====
+    pickAction() {
+      this.showActionPicker = true
+    },
+    jumpToAction(idx) {
+      if (idx === this.actIdx) {
+        // 当前动作 — 仅关闭弹窗
+        this.showActionPicker = false
+        return
+      }
+      this.showActionPicker = false
+      this.clearRepTimer()
       this.clearRestTimer()
+      this.actIdx = idx
+      this.setIdx = 0
+      this.repsDone = 0
+      this.phase = 'train'
+      this.repCountdown = this.repInterval
+      setTimeout(() => this.drawRing('trainRing', 0), 100)
+      this.startRepTimer()
+      uni.showToast({ title: `已切换到 ${this.actions[idx].name}`, icon: 'none', duration: 900 })
+    },
+    jumpToNext() {
+      // 「下一个」卡片：跳到当前组的下一组 或 下一动作的第一个组
+      if (this.setIdx + 1 < this.curSets) {
+        this.setIdx++
+        this.repsDone = 0
+        this.phase = 'train'
+        this.repCountdown = this.repInterval
+        setTimeout(() => this.drawRing('trainRing', 0), 100)
+        this.startRepTimer()
+      } else if (this.actIdx + 1 < this.actions.length) {
+        this.actIdx++
+        this.setIdx = 0
+        this.repsDone = 0
+        this.phase = 'train'
+        this.repCountdown = this.repInterval
+        setTimeout(() => this.drawRing('trainRing', 0), 100)
+        this.startRepTimer()
+      } else {
+        this.finish()
+      }
+    },
+    // ===== 底部三按钮：上一组 / 下一组 =====
+    goPrevSet() {
+      if (this.phase !== 'train') return
+      this.clearRepTimer()
       if (this.setIdx > 0) {
         this.setIdx--
       } else if (this.actIdx > 0) {
         this.actIdx--
         this.setIdx = (this.actions[this.actIdx].sets || 1) - 1
       } else {
-        uni.showToast({ title: '已经是第一个动作', icon: 'none' })
+        uni.showToast({ title: '已经是第一组', icon: 'none' })
+        this.startRepTimer()
         return
       }
       this.repsDone = 0
-      this.phase = 'train'
-      this.$nextTick(() => this.drawRing('trainRing', 0))
+      this.repCountdown = this.repInterval
+      setTimeout(() => this.drawRing('trainRing', 0), 100)
+      this.startRepTimer()
     },
-    nextSet() {
-      if (this.paused) return
+    goNextSet() {
+      // 与完整本组流程对齐：标记完成 → 短暂休息 → 进入下一组
+      if (this.phase !== 'train') return
+      this.clearRepTimer()
       this.completeSet()
     },
+    togglePause() {
+      this.paused = !this.paused
+      if (this.paused) {
+        this.clearRepTimer()
+      } else if (this.phase === 'train') {
+        this.startRepTimer()
+      }
+    },
     completeSet() {
-      // 当前组完成 → 进入休息（休息结束再推进到下一组）
+      this.clearRepTimer()
       this.phase = 'rest'
       this.restLeft = this.restTotal
       this.startRestTimer()
-      this.$nextTick(() => this.drawRing('restRing', 1))
+      setTimeout(() => this.drawRing('restRing', 1), 100)
     },
     startRestTimer() {
       this.clearRestTimer()
@@ -391,7 +571,7 @@ export default {
         if (this.restLeft <= 0) {
           this.restLeft = 0
           this.clearRestTimer()
-          this.advance()
+          this.advance() // 休息结束自动跳下一组/下一动作
         } else {
           this.drawRing('restRing', this.restLeft / this.restTotal)
         }
@@ -417,10 +597,9 @@ export default {
         return
       }
       this.phase = 'train'
-      this.$nextTick(() => this.drawRing('trainRing', 0))
-    },
-    togglePause() {
-      this.paused = !this.paused
+      this.repCountdown = this.repInterval
+      setTimeout(() => this.drawRing('trainRing', 0), 100)
+      this.startRepTimer()
     },
     // ===== 完成 =====
     async finish() {
@@ -452,6 +631,7 @@ export default {
     askExit() {
       if (this.phase === 'done') { this.backToCourse(); return }
       this.paused = true
+      this.clearRepTimer()
       this.showExit = true
     },
     confirmExit() {
@@ -469,14 +649,17 @@ export default {
 .page {
   min-height: 100vh;
   background: #FFFFFF;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ===== 顶部栏 ===== */
 .top-bar {
   display: flex;
   align-items: center;
-  padding: 16rpx 24rpx;
-  padding-top: calc(env(safe-area-inset-top) + 16rpx);
+  /* 右侧 200rpx 给微信原生胶囊（⋯⊙）让位，避免计时器与之重叠 */
+  padding: 16rpx 200rpx 16rpx 24rpx;
+  /* padding-top 由 inline style 动态绑定 statusBarH（mp-weixin 不支持 env） */
+  padding-top: 0;
   background: #FFFFFF;
   border-bottom: 1rpx solid #F0F2F5;
 }
@@ -596,7 +779,7 @@ export default {
   position: relative;
   width: 340rpx;
   height: 340rpx;
-  margin: 40rpx auto 0;
+  margin: 32rpx auto 0;
 }
 .ring-canvas {
   width: 340rpx;
@@ -620,13 +803,44 @@ export default {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+.paused-ico {
+  font-size: 96rpx;
+  color: #B5BCC7;
+}
 .ring-label {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #8A94A6;
   margin-top: 14rpx;
 }
 .rest-num {
   color: #1FCB8A;
+}
+.ring-wrap.paused .ring-canvas {
+  opacity: 0.4;
+}
+
+/* ===== 实时倒计时（下次 +1 还有多少秒） ===== */
+.countdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: #4B5563;
+}
+.cd-ico {
+  font-size: 24rpx;
+}
+.cd-val {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1FCB8A;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1rpx;
+}
+.cd-suf {
+  color: #8A94A6;
 }
 
 /* ===== 动作要领按钮（标题右侧小胶囊） ===== */
@@ -656,7 +870,7 @@ export default {
 .dots-row {
   display: flex;
   align-items: center;
-  margin: 28rpx 32rpx 0;
+  margin: 24rpx 32rpx 0;
 }
 .dots-label {
   font-size: 24rpx;
@@ -688,53 +902,44 @@ export default {
   font-variant-numeric: tabular-nums;
 }
 
-/* ===== 三按钮（左右圆形图标 + 中间暂停胶囊） ===== */
-.tri-bar {
+/* ===== 主操作区（主报数 + 切换动作） ===== */
+.action-btns {
   display: flex;
   align-items: center;
-  gap: 24rpx;
-  margin: 40rpx 32rpx 0;
+  gap: 20rpx;
+  margin: 32rpx 32rpx 0;
 }
-.tri-circle {
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 50%;
-  background: #F4F6F8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.tri-circle-ico {
-  font-size: 34rpx;
-  color: #14181F;
-  font-weight: 700;
-}
-.tri-main {
+.a-btn {
   flex: 1;
-  height: 104rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #1FCB8A, #0FA56C);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12rpx;
-  box-shadow: 0 8rpx 24rpx rgba(31, 203, 138, 0.35);
+  height: 88rpx;
+  border-radius: 999rpx;
+  background: #F4F6F8;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #14181F;
 }
-.tri-main-ico {
+.a-btn-primary {
+  background: linear-gradient(135deg, #1FCB8A, #0FA56C);
   color: #fff;
-  font-size: 30rpx;
-  font-weight: 700;
+  box-shadow: 0 6rpx 18rpx rgba(31, 203, 138, 0.32);
 }
-.tri-main-txt {
-  color: #fff;
-  font-size: 30rpx;
-  font-weight: 700;
+.a-btn-ico {
+  font-size: 28rpx;
+  line-height: 1;
+}
+.a-btn-txt {
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1;
 }
 
 /* ===== 下一动作预告 ===== */
 .next-card {
-  margin: 40rpx 32rpx 0;
+  margin: 28rpx 32rpx 0;
   background: #F4F6F8;
   border-radius: 20rpx;
   padding: 20rpx;
@@ -785,6 +990,62 @@ export default {
 .next-chev {
   font-size: 36rpx;
   color: #B5BCC7;
+}
+
+/* ===== 底部三按钮 ===== */
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* iOS 安全区：env 在 mp-weixin 不可靠，固定底部 24rpx 兜底 */
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + 24rpx);
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  box-shadow: 0 -4rpx 20rpx rgba(20, 24, 31, 0.04);
+  z-index: 10;
+}
+.bb-side {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #F4F6F8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bb-ico {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #14181F;
+  line-height: 1;
+}
+.bb-main {
+  flex: 1;
+  height: 96rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #1FCB8A, #0FA56C);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  box-shadow: 0 6rpx 18rpx rgba(31, 203, 138, 0.32);
+}
+.bb-ico-main {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #FFFFFF;
+  line-height: 1;
+}
+.bb-txt {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1;
 }
 
 /* ===== 组间休息 ===== */
@@ -846,7 +1107,8 @@ export default {
   flex-direction: column;
   align-items: center;
   padding: 120rpx 40rpx 0;
-  padding-top: calc(env(safe-area-inset-top) + 120rpx);
+  /* padding-top 由 inline style 动态绑定 statusBarH */
+  padding-top: 120rpx;
 }
 .done-badge {
   width: 160rpx;
@@ -997,6 +1259,9 @@ export default {
   padding: 20rpx 32rpx;
   max-height: 52vh;
 }
+.sheet-btn-wrap {
+  padding: 20rpx 32rpx 28rpx;
+}
 .step-item {
   display: flex;
   gap: 20rpx;
@@ -1031,7 +1296,7 @@ export default {
   line-height: 1.6;
 }
 .sheet-btn {
-  margin: 20rpx 32rpx 28rpx;
+  width: 100%;
   height: 88rpx;
   line-height: 88rpx;
   background: linear-gradient(135deg, #1FCB8A, #0FA56C);
@@ -1043,6 +1308,143 @@ export default {
 }
 .sheet-btn::after {
   border: none;
+}
+
+/* ===== 主报数间隔选择弹窗 ===== */
+.interval-sheet {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 40rpx 32rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+}
+.interval-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #14181F;
+  text-align: center;
+}
+.interval-sub {
+  font-size: 24rpx;
+  color: #8A94A6;
+  text-align: center;
+  margin-top: 12rpx;
+}
+.interval-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+  margin: 32rpx 0 8rpx;
+}
+.interval-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 130rpx;
+  border-radius: 20rpx;
+  background: #F4F6F8;
+  transition: all 0.15s;
+}
+.interval-cell.on {
+  background: linear-gradient(135deg, #1FCB8A, #0FA56C);
+  box-shadow: 0 4rpx 12rpx rgba(31, 203, 138, 0.3);
+}
+.ic-num {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #14181F;
+  font-variant-numeric: tabular-nums;
+}
+.ic-unit {
+  font-size: 20rpx;
+  color: #8A94A6;
+  margin-top: 4rpx;
+}
+.interval-cell.on .ic-num {
+  color: #fff;
+}
+.interval-cell.on .ic-unit {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ===== 切换动作弹窗 ===== */
+.picker-sheet {
+  width: 620rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 28rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.picker-body {
+  max-height: 56vh;
+  padding: 16rpx 24rpx 24rpx;
+}
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 20rpx;
+  border-radius: 20rpx;
+  background: #F4F6F8;
+  margin-bottom: 16rpx;
+}
+.pick-row.current {
+  background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+  border: 2rpx solid #1FCB8A;
+}
+.pick-no {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #FFFFFF;
+  color: #14181F;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pick-row.current .pick-no {
+  background: #1FCB8A;
+  color: #FFFFFF;
+}
+.pick-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pick-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #14181F;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pick-meta {
+  font-size: 22rpx;
+  color: #8A94A6;
+  margin-top: 6rpx;
+}
+.pick-tag {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #0FA56C;
+  background: #FFFFFF;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+.pick-chev {
+  font-size: 40rpx;
+  color: #B5BCC7;
+  flex-shrink: 0;
 }
 
 /* 退出确认弹窗 */

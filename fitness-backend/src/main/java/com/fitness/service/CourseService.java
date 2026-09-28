@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fitness.common.BusinessException;
 import com.fitness.common.PageResult;
 import com.fitness.common.ResultCode;
+import com.fitness.dto.CourseActionItem;
+import com.fitness.dto.CourseUgcRequest;
 import com.fitness.entity.Action;
 import com.fitness.entity.Course;
 import com.fitness.entity.CourseAction;
@@ -82,7 +84,12 @@ public class CourseService {
     @Transactional
     public Map<String, Object> detail(Long id, Long currentUserId) {
         Course course = courseMapper.selectById(id);
-        if (course == null || course.getStatus() == null || course.getStatus() != 2) {
+        if (course == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "课程不存在或已下架");
+        }
+        // 非公开内容仅提交者本人可见（可自用/跟练），他人不可见
+        boolean owner = currentUserId != null && currentUserId.equals(course.getUserId());
+        if (!owner && (course.getStatus() == null || course.getStatus() != 2)) {
             throw new BusinessException(ResultCode.NOT_FOUND, "课程不存在或已下架");
         }
         // 浏览数 +1
@@ -306,22 +313,125 @@ public class CourseService {
 
     // ==================== UGC 自定义课程（REQ-COURSE-007） ====================
 
+    /** 仅自用 */
+    public static final int STATUS_PRIVATE = 4;
+
     @Transactional
-    public Course submitUgcCourse(Long userId, String name, String category, String intro,
-                                  Integer difficulty, Integer duration, Integer calorie) {
+    public Course submitUgcCourse(Long userId, CourseUgcRequest req) {
+        if (!StringUtils.hasText(req.getName())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "课程名称为必填");
+        }
+        int status = "private".equals(req.getVisibility()) ? STATUS_PRIVATE : 1;
+        if (status == 1) {
+            validatePublicActions(req.getActionItems(), userId);
+        }
         Course course = new Course();
-        course.setName(name);
-        course.setCategory(StringUtils.hasText(category) ? category : "其他");
-        course.setIntro(intro);
-        course.setDifficulty(difficulty == null ? 1 : difficulty);
-        course.setDuration(duration == null ? 30 : duration);
-        course.setCalorie(calorie == null ? 100 : calorie);
+        course.setName(req.getName());
+        course.setCategory(StringUtils.hasText(req.getCategory()) ? req.getCategory() : "其他");
+        course.setPart(req.getPart());
+        course.setCover(req.getCover());
+        course.setIntro(req.getIntro());
+        course.setDifficulty(req.getDifficulty() == null ? 1 : req.getDifficulty());
+        course.setDuration(req.getDuration() == null ? 30 : req.getDuration());
+        course.setCalorie(req.getCalorie() == null ? 100 : req.getCalorie());
         course.setUserId(userId);
-        course.setStatus(1); // 待审核
+        course.setStatus(status);
         course.setViewCount(0);
         course.setFavoriteCount(0);
         course.setLikeCount(0);
         courseMapper.insert(course);
+        saveUgcActions(course.getId(), req.getActionItems());
         return course;
+    }
+
+    /** 我的自定义课程（全状态 1/2/3/4） */
+    public List<Course> listMine(Long userId) {
+        return courseMapper.selectList(new LambdaQueryWrapper<Course>()
+                .eq(Course::getUserId, userId)
+                .in(Course::getStatus, 1, 2, 3, 4)
+                .orderByDesc(Course::getId));
+    }
+
+    /** 编辑自己的自定义课程（驳回后重提，清空驳回原因） */
+    @Transactional
+    public Course updateUgc(Long userId, Long id, CourseUgcRequest req) {
+        Course exist = courseMapper.selectById(id);
+        if (exist == null || !userId.equals(exist.getUserId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "课程不存在或无权操作");
+        }
+        if (!StringUtils.hasText(req.getName())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "课程名称为必填");
+        }
+        int status = "private".equals(req.getVisibility()) ? STATUS_PRIVATE : 1;
+        if (status == 1) {
+            validatePublicActions(req.getActionItems(), userId);
+        }
+        exist.setName(req.getName());
+        exist.setCategory(StringUtils.hasText(req.getCategory()) ? req.getCategory() : "其他");
+        exist.setPart(req.getPart());
+        exist.setCover(req.getCover());
+        exist.setIntro(req.getIntro());
+        exist.setDifficulty(req.getDifficulty() == null ? 1 : req.getDifficulty());
+        exist.setDuration(req.getDuration() == null ? 30 : req.getDuration());
+        exist.setCalorie(req.getCalorie() == null ? 100 : req.getCalorie());
+        exist.setStatus(status);
+        exist.setRejectReason(null);
+        courseMapper.updateById(exist);
+        courseActionMapper.delete(new LambdaQueryWrapper<CourseAction>().eq(CourseAction::getCourseId, id));
+        saveUgcActions(id, req.getActionItems());
+        return exist;
+    }
+
+    /** 删除自己的自定义课程（级联清理编排） */
+    @Transactional
+    public void deleteUgc(Long userId, Long id) {
+        Course exist = courseMapper.selectById(id);
+        if (exist == null || !userId.equals(exist.getUserId())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "课程不存在或无权操作");
+        }
+        courseActionMapper.delete(new LambdaQueryWrapper<CourseAction>().eq(CourseAction::getCourseId, id));
+        courseMapper.deleteById(id);
+    }
+
+    /** 编排动作入库（按数组顺序赋 sort） */
+    private void saveUgcActions(Long courseId, List<CourseActionItem> actionItems) {
+        if (actionItems == null || actionItems.isEmpty()) {
+            return;
+        }
+        int sort = 1;
+        for (CourseActionItem item : actionItems) {
+            if (item.getActionId() == null) {
+                continue;
+            }
+            CourseAction ca = new CourseAction();
+            ca.setCourseId(courseId);
+            ca.setActionId(item.getActionId());
+            ca.setSort(sort++);
+            ca.setSets(item.getSets());
+            ca.setReps(item.getReps());
+            ca.setWeight(item.getWeight());
+            courseActionMapper.insert(ca);
+        }
+    }
+
+    /** 公开课动作约束：申请公开时，禁止编排本人「仅自用(4)/已驳回(3)」动作 */
+    private void validatePublicActions(List<CourseActionItem> actionItems, Long userId) {
+        if (actionItems == null || actionItems.isEmpty()) {
+            return;
+        }
+        for (CourseActionItem item : actionItems) {
+            if (item.getActionId() == null) {
+                continue;
+            }
+            Action a = actionMapper.selectById(item.getActionId());
+            if (a == null) {
+                continue;
+            }
+            boolean isMine = userId.equals(a.getUserId());
+            if (isMine && a.getStatus() != null && (a.getStatus() == 3 || a.getStatus() == 4)) {
+                throw new BusinessException(ResultCode.BAD_REQUEST,
+                        "申请公开的课程不能包含「仅自用」或「已驳回」的动作：" + a.getName());
+            }
+        }
     }
 }

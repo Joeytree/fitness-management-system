@@ -1,0 +1,5 @@
+# 开发环境配置：开启 MyBatis-Plus SQL 标准输出日志（生产默认关闭）
+# 启动方式：java -jar xxx.jar --spring.profiles.active=dev
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

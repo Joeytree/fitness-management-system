@@ -144,7 +144,8 @@ public class UserService {
         if (req.getHeight() != null) user.setHeight(req.getHeight());
         if (req.getGoal() != null) user.setGoal(req.getGoal());
         if (req.getLevel() != null) user.setLevel(req.getLevel());
-        // 更新推荐标签
+        if (req.getPreferParts() != null) user.setPreferParts(req.getPreferParts());
+        // 更新推荐标签（tags 存目标+水平，与 preferParts 语义分离）
         user.setTags(buildTags(user.getGoal(), user.getLevel()));
         userMapper.updateById(user);
         user.setPassword(null);

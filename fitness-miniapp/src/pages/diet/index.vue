@@ -1,26 +1,45 @@
 <template>
   <view class="page-pad">
-    <!-- 热量概览 -->
+    <!-- ===== 热量概览卡片（薄荷健康风） ===== -->
     <view class="cal-card">
-      <canvas id="ringCanvas" type="2d" class="ring"></canvas>
-      <view class="ring-text">
-        <view class="ring-val">{{ summary.totalCalorie || 0 }}</view>
-        <view class="ring-unit">/ {{ summary.targetCalorie || 0 }} 千卡</view>
-        <view class="ring-tip" :class="{ over: summary.over }">
-          {{ summary.over ? '⚠️ 已超出目标' : (summary.targetCalorie ? '剩余 ' + Math.max(0, summary.targetCalorie - summary.totalCalorie) + ' 千卡' : '') }}
+      <view class="cc-top">
+        <!-- 左：饮食摄入 -->
+        <view class="cc-side">
+          <text class="cc-side-label">饮食摄入</text>
+          <text class="cc-side-val intake">{{ intake }}</text>
+          <text class="cc-side-unit">千卡</text>
+        </view>
+
+        <!-- 中：缺口圆环 -->
+        <view class="cc-ring-wrap">
+          <canvas id="ringCanvas" type="2d" class="ring"></canvas>
+          <view class="cc-ring-text">
+            <text class="cc-remain-label">还可摄入</text>
+            <text class="cc-remain-val" :class="{ over: summary.over }">{{ remain }}</text>
+            <text class="cc-target">推荐摄入 {{ target }}</text>
+          </view>
+        </view>
+
+        <!-- 右：运动消耗 -->
+        <view class="cc-side">
+          <text class="cc-side-label">运动消耗</text>
+          <text class="cc-side-val">{{ burn }}</text>
+          <text class="cc-side-unit">千卡</text>
         </view>
       </view>
+
+      <!-- 三大营养素 -->
       <view class="nutrients">
         <view class="n-item">
-          <text class="n-val" style="color:#3b82f6">{{ (summary.protein || 0).toFixed(1) }}<text class="n-u">g</text></text>
+          <text class="n-val" style="color:#3b82f6">{{ fmt(summary.protein) }}<text class="n-u">克</text></text>
           <text class="n-label">蛋白质</text>
         </view>
         <view class="n-item">
-          <text class="n-val" style="color:#f59e0b">{{ (summary.carb || 0).toFixed(1) }}<text class="n-u">g</text></text>
+          <text class="n-val" style="color:#f59e0b">{{ fmt(summary.carb) }}<text class="n-u">克</text></text>
           <text class="n-label">碳水</text>
         </view>
         <view class="n-item">
-          <text class="n-val" style="color:#ec4899">{{ (summary.fat || 0).toFixed(1) }}<text class="n-u">g</text></text>
+          <text class="n-val" style="color:#ec4899">{{ fmt(summary.fat) }}<text class="n-u">克</text></text>
           <text class="n-label">脂肪</text>
         </view>
       </view>
@@ -56,7 +75,6 @@
 
 <script>
 import { get, del } from '../../utils/request'
-import { dict } from '../../utils/index'
 
 export default {
   data() {
@@ -72,12 +90,26 @@ export default {
     }
   },
   computed: {
+    intake() {
+      return Number(this.summary.totalCalorie || 0)
+    },
+    target() {
+      return Number(this.summary.targetCalorie || 0)
+    },
+    burn() {
+      return Number(this.summary.burnCalorie || 0)
+    },
+    // 还可摄入：优先后端计算值，兜底前端算
+    remain() {
+      if (this.summary.remainCalorie != null) return Number(this.summary.remainCalorie)
+      return Math.max(0, this.target - this.intake + this.burn)
+    },
     mealGroups() {
       // 按 mealType 分组 + 计算每组总热量
       return this.mealDefs.map(def => {
         const items = this.records.filter(r => r.mealType === def.type)
         const totalCal = items.reduce((s, i) => s + (Number(i.calorie) || 0), 0)
-        return { ...def, items, totalCal }
+        return { ...def, items, totalCal: Math.round(totalCal) }
       }).filter(g => g.items.length > 0)
     }
   },
@@ -85,19 +117,24 @@ export default {
     this.load()
   },
   methods: {
+    fmt(v) {
+      const n = Number(v || 0)
+      return n % 1 === 0 ? String(n) : n.toFixed(1)
+    },
     async load() {
       try {
         this.summary = await get('/diet/summary')
       } catch (e) { /* 忽略 */ }
       try {
         this.records = await get('/diet/record')
-        this.$nextTick(() => this.drawRing())
+        this.$nextTick(() => setTimeout(() => this.drawRing(), 60))
       } catch (e) { /* 忽略 */ }
     },
+    // 缺口圆环：缺口居中在顶部，绿色段表示 已摄入/推荐
     drawRing() {
       const query = uni.createSelectorQuery().in(this)
       query.select('#ringCanvas').fields({ node: true, size: true }).exec((res) => {
-        if (!res || !res[0] || !res[0].node) return
+        if (!res || !res[0] || !res[0].node || !res[0].width) return
         const canvas = res[0].node
         const ctx = canvas.getContext('2d')
         const dpr = (uni.getSystemInfoSync().pixelRatio) || 2
@@ -106,28 +143,39 @@ export default {
         canvas.width = w * dpr
         canvas.height = h * dpr
         ctx.scale(dpr, dpr)
+        ctx.clearRect(0, 0, w, h)
+
+        const lw = 14
         const cx = w / 2
         const cy = h / 2
-        const r = Math.min(w, h) / 2 - 14
-        const lw = 16
+        const r = Math.min(w, h) / 2 - lw / 2 - 2
 
-        // 背景环
+        // 顶部缺口 40°
+        const gap = Math.PI * 2 * (40 / 360)
+        const start = -Math.PI / 2 + gap / 2
+        const sweep = Math.PI * 2 - gap
+
+        // 底环
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, start, start + sweep)
         ctx.strokeStyle = '#e6f7ef'
         ctx.lineWidth = lw
         ctx.lineCap = 'round'
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
         ctx.stroke()
 
-        // 进度环
-        const total = Number(this.summary.totalCalorie) || 0
-        const target = Number(this.summary.targetCalorie) || 1
-        const ratio = Math.min(1, total / target)
-        const over = total > target
-        ctx.strokeStyle = over ? '#f59e0b' : '#10b981'
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio)
-        ctx.stroke()
+        // 进度环（已摄入 / 推荐）
+        const target = Number(this.summary.targetCalorie) || 0
+        if (target > 0) {
+          const ratio = Math.min(1, (Number(this.summary.totalCalorie) || 0) / target)
+          if (ratio > 0) {
+            ctx.beginPath()
+            ctx.arc(cx, cy, r, start, start + sweep * ratio)
+            ctx.strokeStyle = this.summary.over ? '#f59e0b' : '#10b981'
+            ctx.lineWidth = lw
+            ctx.lineCap = 'round'
+            ctx.stroke()
+          }
+        }
       })
     },
     goRecord(type) {
@@ -145,53 +193,98 @@ export default {
 </script>
 
 <style>
+/* ===== 热量概览卡片 ===== */
 .cal-card {
-  position: relative;
   background: #fff;
   border-radius: 32rpx;
-  padding: 40rpx 32rpx 32rpx;
+  padding: 36rpx 24rpx 28rpx;
   box-shadow: 0 6rpx 24rpx rgba(16, 185, 129, 0.06);
   margin-bottom: 24rpx;
-  text-align: center;
 }
-.ring {
-  width: 320rpx;
-  height: 320rpx;
-  margin: 0 auto;
+.cc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.ring-text {
-  position: absolute;
-  top: 56rpx;
-  left: 0;
-  right: 0;
-  text-align: center;
-  pointer-events: none;
+.cc-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-.ring-val {
-  font-size: 56rpx;
-  font-weight: 700;
-  color: #1f2937;
-  line-height: 1;
-}
-.ring-unit {
+.cc-side-label {
   font-size: 22rpx;
   color: #9ca3af;
-  margin-top: 8rpx;
 }
-.ring-tip {
-  font-size: 24rpx;
+.cc-side-val {
+  font-size: 46rpx;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.15;
+  margin-top: 6rpx;
+  font-variant-numeric: tabular-nums;
+}
+.cc-side-val.intake {
   color: #10b981;
-  margin-top: 12rpx;
 }
-.ring-tip.over {
+.cc-side-unit {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 2rpx;
+}
+
+/* 中间圆环 */
+.cc-ring-wrap {
+  position: relative;
+  width: 244rpx;
+  height: 244rpx;
+  flex-shrink: 0;
+}
+.ring {
+  width: 244rpx;
+  height: 244rpx;
+}
+.cc-ring-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.cc-remain-label {
+  font-size: 20rpx;
+  color: #9ca3af;
+}
+.cc-remain-val {
+  font-size: 52rpx;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.05;
+  margin-top: 2rpx;
+  font-variant-numeric: tabular-nums;
+}
+.cc-remain-val.over {
   color: #f59e0b;
 }
+.cc-target {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+}
+
+/* 三大营养素 */
 .nutrients {
-  margin-top: 24rpx;
-  display: flex;
-  justify-content: space-around;
+  margin-top: 28rpx;
   padding-top: 24rpx;
   border-top: 1rpx solid #f3f4f6;
+  display: flex;
+  justify-content: space-around;
 }
 .n-item {
   display: flex;
@@ -201,6 +294,7 @@ export default {
 .n-val {
   font-size: 36rpx;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .n-u {
   font-size: 20rpx;
@@ -213,6 +307,8 @@ export default {
   color: #6b7280;
   margin-top: 6rpx;
 }
+
+/* ===== 今日餐饮 ===== */
 .section-title {
   font-size: 32rpx;
   font-weight: 700;

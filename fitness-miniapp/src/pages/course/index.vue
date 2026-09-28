@@ -10,6 +10,7 @@
         confirm-type="search"
         @confirm="reload"
       />
+      <text class="create-entry" @click="goCreate">＋ 新建</text>
     </view>
 
     <!-- 主体：左侧分类栏 + 右侧沉浸式卡片列表 -->
@@ -48,7 +49,7 @@
         </view>
 
         <!-- 卡片列表 -->
-        <scroll-view scroll-y class="card-scroll">
+        <scroll-view scroll-y class="card-scroll" @scrolltolower="loadMore">
           <view v-for="c in list" :key="c.id" class="course-card" @click="goDetail(c)">
             <view class="cover" :style="{ background: coverGrad(c.category) }">
               <image v-if="c.cover" class="cover-img" :src="fullUrl(c.cover)" mode="aspectFill" lazy-load />
@@ -68,6 +69,7 @@
             </view>
           </view>
           <view v-if="!list.length" class="empty muted">暂无课程</view>
+          <view v-else class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
         </scroll-view>
       </view>
     </view>
@@ -105,6 +107,9 @@ export default {
       category: '全部',
       keyword: '',
       list: [],
+      page: 1,
+      hasMore: true,
+      loading: false,
       // 筛选状态
       difficulty: null,
       part: null,
@@ -192,6 +197,9 @@ export default {
     },
     async reload() {
       const r = this.durationRange || {}
+      this.page = 1
+      this.hasMore = true
+      this.loading = false
       try {
         const data = await get('/course', {
           category: this.category === '全部' ? undefined : this.category,
@@ -201,13 +209,43 @@ export default {
           maxDuration: r.max,
           keyword: this.keyword || undefined,
           page: 1,
-          pageSize: 100
+          pageSize: 20
         })
         this.list = data.list || []
+        this.hasMore = this.list.length < (data.total || 0)
       } catch (e) { /* 忽略 */ }
+    },
+    async loadMore() {
+      if (this.loading || !this.hasMore) return
+      this.loading = true
+      const r = this.durationRange || {}
+      try {
+        const data = await get('/course', {
+          category: this.category === '全部' ? undefined : this.category,
+          part: this.part || undefined,
+          difficulty: this.difficulty || undefined,
+          minDuration: r.min,
+          maxDuration: r.max,
+          keyword: this.keyword || undefined,
+          page: this.page + 1,
+          pageSize: 20
+        })
+        const list = data.list || []
+        if (list.length) {
+          this.list = this.list.concat(list)
+          this.page += 1
+          this.hasMore = this.list.length < (data.total || 0)
+        } else {
+          this.hasMore = false
+        }
+      } catch (e) { /* 忽略 */ }
+      this.loading = false
     },
     goDetail(c) {
       uni.navigateTo({ url: '/pages/course/detail?id=' + c.id })
+    },
+    goCreate() {
+      uni.navigateTo({ url: '/pages/custom/course-edit' })
     }
   }
 }
@@ -242,6 +280,12 @@ page {
 .search-input {
   flex: 1;
   font-size: 28rpx;
+}
+.create-entry {
+  flex: none;
+  font-size: 28rpx;
+  color: #10b981;
+  font-weight: 600;
 }
 /* 主体 */
 .body {
@@ -449,5 +493,11 @@ page {
   text-align: center;
   padding: 80rpx 0;
   font-size: 26rpx;
+}
+.load-tip {
+  text-align: center;
+  padding: 24rpx 0 40rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 </style>

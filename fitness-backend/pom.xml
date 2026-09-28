@@ -25,6 +25,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <poi.version>5.2.5</poi.version>
         <lombok.version>1.18.38</lombok.version>
+        <druid.version>1.2.25</druid.version>
     </properties>
 
     <dependencies>
@@ -50,12 +51,24 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Druid 连接池 + 内置监控台（SQL/慢SQL、SQL防火墙、Web应用/URI/Session/Spring 监控） -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
+            <version>${druid.version}</version>
+        </dependency>
+        <!-- AOP：监控台「Spring监控」菜单依赖 AspectJ 表达式切点（spring.datasource.druid.aop-patterns） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
             <version>${jjwt.version}</version>
         </dependency>
+
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
@@ -107,8 +120,6 @@
                             <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
-                    <source>8</source>
-                    <target>8</target>
                 </configuration>
             </plugin>
             <plugin>

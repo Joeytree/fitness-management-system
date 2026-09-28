@@ -2,12 +2,18 @@ package com.fitness.controller;
 
 import com.fitness.common.PageResult;
 import com.fitness.common.Result;
+import com.fitness.dto.AdminCreateRequest;
+import com.fitness.dto.AdminUpdateRequest;
+import com.fitness.dto.PermissionAssignRequest;
+import com.fitness.dto.RoleRequest;
+import com.fitness.dto.StatusRequest;
 import com.fitness.entity.Admin;
 import com.fitness.entity.Permission;
 import com.fitness.entity.Role;
 import com.fitness.entity.User;
 import com.fitness.security.RequireAdmin;
 import com.fitness.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,8 +58,8 @@ public class AdminController {
     }
 
     @PutMapping("/user/{id}/status")
-    public Result<Void> updateUserStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        adminService.updateUserStatus(id, Integer.valueOf(String.valueOf(body.get("status"))));
+    public Result<Void> updateUserStatus(@PathVariable Long id, @Valid @RequestBody StatusRequest req) {
+        adminService.updateUserStatus(id, req.getStatus());
         return Result.ok();
     }
 
@@ -63,24 +69,18 @@ public class AdminController {
     }
 
     @PostMapping("/role")
-    public Result<Role> createRole(@RequestBody Map<String, Object> body) {
-        return Result.ok(adminService.createRole(
-                String.valueOf(body.get("name")), String.valueOf(body.get("code")),
-                body.get("description") == null ? null : String.valueOf(body.get("description"))));
+    public Result<Role> createRole(@Valid @RequestBody RoleRequest req) {
+        return Result.ok(adminService.createRole(req.getName(), req.getCode(), req.getDescription()));
     }
 
     @PutMapping("/role/{id}")
-    public Result<Role> updateRole(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return Result.ok(adminService.updateRole(id,
-                String.valueOf(body.get("name")), String.valueOf(body.get("code")),
-                body.get("description") == null ? null : String.valueOf(body.get("description"))));
+    public Result<Role> updateRole(@PathVariable Long id, @Valid @RequestBody RoleRequest req) {
+        return Result.ok(adminService.updateRole(id, req.getName(), req.getCode(), req.getDescription()));
     }
 
     @PutMapping("/role/{id}/permission")
-    public Result<Void> assignPermission(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        List<Long> permissionIds = ((List<?>) body.get("permissionIds")).stream()
-                .map(o -> Long.valueOf(String.valueOf(o))).toList();
-        adminService.assignPermission(id, permissionIds);
+    public Result<Void> assignPermission(@PathVariable Long id, @Valid @RequestBody PermissionAssignRequest req) {
+        adminService.assignPermission(id, req.getPermissionIds());
         return Result.ok();
     }
 
@@ -100,18 +100,13 @@ public class AdminController {
     }
 
     @PostMapping("/admin")
-    public Result<Admin> createAdmin(@RequestBody Map<String, Object> body) {
+    public Result<Admin> createAdmin(@Valid @RequestBody AdminCreateRequest req) {
         return Result.ok(adminService.createAdmin(
-                String.valueOf(body.get("username")), String.valueOf(body.get("password")),
-                body.get("nickname") == null ? null : String.valueOf(body.get("nickname")),
-                Long.valueOf(String.valueOf(body.get("roleId")))));
+                req.getUsername(), req.getPassword(), req.getNickname(), req.getRoleId()));
     }
 
     @PutMapping("/admin/{id}")
-    public Result<Admin> updateAdmin(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return Result.ok(adminService.updateAdmin(id,
-                body.get("nickname") == null ? null : String.valueOf(body.get("nickname")),
-                body.get("roleId") == null ? null : Long.valueOf(String.valueOf(body.get("roleId"))),
-                body.get("status") == null ? null : Integer.valueOf(String.valueOf(body.get("status")))));
+    public Result<Admin> updateAdmin(@PathVariable Long id, @Valid @RequestBody AdminUpdateRequest req) {
+        return Result.ok(adminService.updateAdmin(id, req.getNickname(), req.getRoleId(), req.getStatus()));
     }
 }

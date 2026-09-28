@@ -3,6 +3,8 @@ package com.fitness.controller;
 import com.fitness.common.PageResult;
 import com.fitness.common.Result;
 import com.fitness.dto.CommentRequest;
+import com.fitness.dto.CourseProgressRequest;
+import com.fitness.dto.CourseUgcRequest;
 import com.fitness.entity.Course;
 import com.fitness.entity.CourseComment;
 import com.fitness.security.RequireLogin;
@@ -101,8 +103,8 @@ public class CourseController {
 
     @PutMapping("/{id}/progress")
     @RequireLogin
-    public Result<Map<String, Object>> recordProgress(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        Integer status = body.get("status") == null ? 2 : Integer.valueOf(String.valueOf(body.get("status")));
+    public Result<Map<String, Object>> recordProgress(@PathVariable Long id, @Valid @RequestBody CourseProgressRequest req) {
+        Integer status = req.getStatus() == null ? 2 : req.getStatus();
         return Result.ok(courseService.recordProgress(UserContext.getUserId(), id, status));
     }
 
@@ -110,14 +112,29 @@ public class CourseController {
 
     @PostMapping("/ugc")
     @RequireLogin
-    public Result<Course> submitUgc(@RequestBody Map<String, Object> body) {
-        return Result.ok(courseService.submitUgcCourse(
-                UserContext.getUserId(),
-                String.valueOf(body.get("name")),
-                body.get("category") == null ? null : String.valueOf(body.get("category")),
-                body.get("intro") == null ? null : String.valueOf(body.get("intro")),
-                body.get("difficulty") == null ? null : Integer.valueOf(String.valueOf(body.get("difficulty"))),
-                body.get("duration") == null ? null : Integer.valueOf(String.valueOf(body.get("duration"))),
-                body.get("calorie") == null ? null : Integer.valueOf(String.valueOf(body.get("calorie")))));
+    public Result<Course> submitUgc(@RequestBody CourseUgcRequest req) {
+        return Result.ok(courseService.submitUgcCourse(UserContext.getUserId(), req));
+    }
+
+    /** 我的自定义课程（全状态） */
+    @GetMapping("/mine")
+    @RequireLogin
+    public Result<List<Course>> mine() {
+        return Result.ok(courseService.listMine(UserContext.getUserId()));
+    }
+
+    /** 编辑自己的自定义课程（驳回后重提） */
+    @PutMapping("/ugc/{id}")
+    @RequireLogin
+    public Result<Course> updateUgc(@PathVariable Long id, @RequestBody CourseUgcRequest req) {
+        return Result.ok(courseService.updateUgc(UserContext.getUserId(), id, req));
+    }
+
+    /** 删除自己的自定义课程 */
+    @DeleteMapping("/ugc/{id}")
+    @RequireLogin
+    public Result<Boolean> deleteUgc(@PathVariable Long id) {
+        courseService.deleteUgc(UserContext.getUserId(), id);
+        return Result.ok(true);
     }
 }

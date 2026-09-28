@@ -7,27 +7,54 @@
       <text class="month-btn" @click="nextMonth">›</text>
     </view>
 
+    <!-- 三栏统计：训练天数 / 训练时长 / 总消耗 -->
+    <view class="stat-row">
+      <view class="stat-card days">
+        <view class="stat-top">
+          <text class="stat-ico">📅</text>
+          <text class="stat-val">{{ summary.days || 0 }}</text>
+          <text class="stat-unit">天</text>
+        </view>
+        <text class="stat-label">训练天数</text>
+      </view>
+      <view class="stat-card duration">
+        <view class="stat-top">
+          <text class="stat-ico">⏱</text>
+          <text class="stat-val">{{ summary.duration || 0 }}</text>
+          <text class="stat-unit">分钟</text>
+        </view>
+        <text class="stat-label">训练时长</text>
+      </view>
+      <view class="stat-card calorie">
+        <view class="stat-top">
+          <text class="stat-ico">🔥</text>
+          <text class="stat-val">{{ fmtNum(summary.calorie) }}</text>
+          <text class="stat-unit">千卡</text>
+        </view>
+        <text class="stat-label">总消耗</text>
+      </view>
+    </view>
+
     <!-- 日历卡片 -->
     <view class="calendar-card">
-      <!-- 星期表头 -->
+      <!-- 星期表头（周日起始） -->
       <view class="week-row">
         <text v-for="d in weeks" :key="d" class="week-cell">{{ d }}</text>
       </view>
       <!-- 日期网格 -->
       <view class="grid">
-        <view v-for="(cell, i) in cells" :key="i" class="day-cell">
-          <view v-if="cell" class="day" :class="{ checked: isChecked(cell), today: isToday(cell) }">
-            <text>{{ cell }}</text>
-            <view v-if="isChecked(cell)" class="dot"></view>
+        <view v-for="(c, i) in viewCells" :key="c.day !== null ? 'd' + c.day : 'e' + i" class="day-cell">
+          <view v-if="c.day" class="day" :class="{ today: c.today, 'has-data': !!c.info }">
+            <text class="day-num">{{ c.day }}</text>
+            <block v-if="c.info">
+              <text class="day-cal">{{ c.info.calorie }}千卡</text>
+              <text class="day-dur" v-if="c.info.duration">{{ c.info.duration }}分钟</text>
+              <text class="part-tag" v-for="p in c.visibleParts" :key="p">{{ p }}</text>
+              <text class="part-tag more" v-if="c.moreCount > 0">+{{ c.moreCount }}</text>
+            </block>
           </view>
         </view>
       </view>
-    </view>
-
-    <!-- 底部统计 -->
-    <view class="summary">
-      本月打卡 <text class="b-val">{{ monthCheckCount }}</text> 天 · 连续 <text class="b-val">{{ info.streak || 0 }}</text> 天
-      <text v-if="(info.streak || 0) > 0" class="b-fire">🔥</text>
     </view>
   </view>
 </template>
@@ -42,14 +69,31 @@ export default {
       month: new Date().getMonth() + 1,
       weeks: ['日', '一', '二', '三', '四', '五', '六'],
       cells: [],
-      checkDates: [],
-      info: {}
+      days: [],
+      summary: {}
     }
   },
   computed: {
-    monthCheckCount() {
-      const ym = `${this.year}-${String(this.month).padStart(2, '0')}-`
-      return (this.checkDates || []).filter(d => d.startsWith(ym)).length
+    // 日期 → 当日训练明细
+    dataMap() {
+      const m = {}
+      ;(this.days || []).forEach(d => { m[d.date] = d })
+      return m
+    },
+    // 单元格视图：预计算部位标签的「最多 2 个 + N」
+    viewCells() {
+      return this.cells.map(day => {
+        if (!day) return { day: null }
+        const info = this.dataMap[this.dateStr(day)] || null
+        const parts = (info && info.parts) || []
+        return {
+          day,
+          info,
+          today: this.isToday(day),
+          visibleParts: parts.slice(0, 2),
+          moreCount: Math.max(0, parts.length - 2)
+        }
+      })
     }
   },
   onLoad() {
@@ -57,6 +101,13 @@ export default {
     this.load()
   },
   methods: {
+    dateStr(day) {
+      return `${this.year}-${String(this.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    },
+    fmtNum(n) {
+      const s = String(Number(n || 0))
+      return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    },
     buildCalendar() {
       const firstDay = new Date(this.year, this.month - 1, 1).getDay()
       const daysInMonth = new Date(this.year, this.month, 0).getDate()
@@ -67,15 +118,13 @@ export default {
     },
     async load() {
       try {
-        this.checkDates = await get('/plan/calendar', { year: this.year, month: this.month })
-      } catch (e) { /* 忽略 */ }
-      try {
-        this.info = await get('/health/checkin')
-      } catch (e) { /* 忽略 */ }
-    },
-    isChecked(day) {
-      const dateStr = `${this.year}-${String(this.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      return (this.checkDates || []).includes(dateStr)
+        const data = await get('/plan/calendar/detail', { year: this.year, month: this.month })
+        this.days = (data && data.days) || []
+        this.summary = (data && data.summary) || {}
+      } catch (e) {
+        this.days = []
+        this.summary = {}
+      }
     },
     isToday(day) {
       const t = new Date()
@@ -98,6 +147,7 @@ export default {
 </script>
 
 <style>
+/* ===== 月份切换 ===== */
 .month-bar {
   display: flex;
   align-items: center;
@@ -107,21 +157,68 @@ export default {
 .month-label {
   font-size: 36rpx;
   font-weight: 700;
+  color: #1f2937;
 }
 .month-btn {
   font-size: 48rpx;
   color: #10b981;
   padding: 0 24rpx;
 }
+
+/* ===== 三栏统计 ===== */
+.stat-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 8rpx 18rpx;
+  border-radius: 20rpx;
+}
+.stat-card.days { background: #ecfdf5; }
+.stat-card.duration { background: #eff6ff; }
+.stat-card.calorie { background: #fff7ed; }
+.stat-top {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+}
+.stat-ico {
+  font-size: 24rpx;
+}
+.stat-val {
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-card.days .stat-val { color: #10b981; }
+.stat-card.duration .stat-val { color: #3b82f6; }
+.stat-card.calorie .stat-val { color: #f59e0b; }
+.stat-unit {
+  font-size: 18rpx;
+  color: #6b7280;
+}
+.stat-label {
+  font-size: 20rpx;
+  color: #9ca3af;
+  margin-top: 8rpx;
+}
+
+/* ===== 日历卡片 ===== */
 .calendar-card {
   background: #fff;
   border-radius: 28rpx;
-  padding: 24rpx 16rpx 32rpx;
+  padding: 20rpx 8rpx 24rpx;
   box-shadow: 0 6rpx 20rpx rgba(16, 185, 129, 0.06);
 }
 .week-row {
   display: flex;
-  margin-bottom: 12rpx;
+  margin-bottom: 8rpx;
 }
 .week-cell {
   flex: 1;
@@ -136,59 +233,62 @@ export default {
 }
 .day-cell {
   width: 14.28%;
-  height: 96rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 4rpx 3rpx;
+  box-sizing: border-box;
 }
 .day {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
+  min-height: 156rpx;
+  border-radius: 14rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  position: relative;
+  padding: 10rpx 2rpx 8rpx;
+  box-sizing: border-box;
 }
-.day text {
-  font-size: 28rpx;
-  color: #1f2937;
+.day.today {
+  background: #f0fdf9;
+  box-shadow: inset 0 0 0 2rpx #a7f3d0;
 }
-.day.checked {
-  background: linear-gradient(135deg, #34d399, #10b981);
-}
-.day.checked text {
-  color: #fff;
+.day-num {
+  font-size: 26rpx;
   font-weight: 600;
+  color: #374151;
+  line-height: 1.2;
 }
-.day.today text {
-  font-weight: 700;
+.day.today .day-num {
   color: #10b981;
+  font-weight: 800;
 }
-.day.today.checked text {
-  color: #fff;
-}
-.dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background: #fff;
-  margin-top: 4rpx;
-}
-.summary {
-  text-align: center;
-  margin-top: 28rpx;
-  font-size: 28rpx;
-  color: #4b5563;
-}
-.b-val {
-  color: #10b981;
+.day.has-data .day-num {
+  color: #1f2937;
   font-weight: 700;
-  font-size: 32rpx;
-  margin: 0 4rpx;
 }
-.b-fire {
-  margin-left: 8rpx;
+.day-cal {
+  font-size: 17rpx;
+  color: #f59e0b;
+  margin-top: 6rpx;
+  line-height: 1.2;
+}
+.day-dur {
+  font-size: 16rpx;
+  color: #3b82f6;
+  background: #eff6ff;
+  border-radius: 6rpx;
+  padding: 2rpx 6rpx;
+  margin-top: 5rpx;
+  line-height: 1.3;
+}
+.part-tag {
+  font-size: 16rpx;
+  color: #8b5cf6;
+  background: #f5f3ff;
+  border-radius: 6rpx;
+  padding: 2rpx 6rpx;
+  margin-top: 5rpx;
+  line-height: 1.3;
+}
+.part-tag.more {
+  color: #9ca3af;
+  background: #f3f4f6;
 }
 </style>

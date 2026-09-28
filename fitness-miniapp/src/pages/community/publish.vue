@@ -9,7 +9,7 @@
       />
       <view class="char-count muted">{{ content.length }} / 500</view>
       <view class="image-grid">
-        <view v-for="(img, i) in images" :key="i" class="img-item">
+        <view v-for="(img, i) in images" :key="img" class="img-item">
           <image :src="fullUrl(img)" mode="aspectFill" class="img" />
           <text class="img-remove" @click="removeImage(i)">✕</text>
         </view>
@@ -55,36 +55,16 @@ export default {
       if (i >= 0) this.selectedTopics.splice(i, 1)
       else this.selectedTopics.push(t)
     },
-    chooseImage() {
+    async chooseImage() {
       uni.chooseImage({
         count: 9 - this.images.length,
-        success: (res) => {
-          res.tempFilePaths.forEach(path => this.uploadImage(path))
-        }
-      })
-    },
-    uploadImage(path) {
-      uni.uploadFile({
-        url: config.BASE_URL + '/upload',
-        filePath: path,
-        name: 'file',
-        header: {
-          'Authorization': 'Bearer ' + (uni.getStorageSync('token') || '')
-        },
-        success: (res) => {
-          try {
-            const data = JSON.parse(res.data)
-            if (data.code === 0 && data.data && data.data.url) {
-              this.images.push(data.data.url)
-            } else {
-              uni.showToast({ title: '图片上传失败', icon: 'none' })
-            }
-          } catch (e) {
-            uni.showToast({ title: '图片上传失败', icon: 'none' })
+        success: async (res) => {
+          for (const path of (res.tempFilePaths || [])) {
+            try {
+              const url = await uploadFile(path)
+              this.images.push(url)
+            } catch (e) { /* 已提示 */ }
           }
-        },
-        fail: () => {
-          uni.showToast({ title: '图片上传失败', icon: 'none' })
         }
       })
     },

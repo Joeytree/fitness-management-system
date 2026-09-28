@@ -70,7 +70,7 @@ const dict = {
   diff: { 1: '入门', 2: '进阶', 3: '高级' },
   mediaType: { 1: '动图', 2: '视频', 3: '图片' }
 }
-const parts = ['胸', '背', '肩', '手臂', '腿', '臀', '核心', '全身']
+const parts = ['胸', '背', '肩', '手臂', '腿', '核心', '全身']
 
 const list = ref([])
 const total = ref(0)

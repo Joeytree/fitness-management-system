@@ -15,5 +15,7 @@ public class ProfileUpdateRequest {
     private BigDecimal height;
     private Integer goal;
     private Integer level;
+    /** 偏好部位，逗号分隔 */
+    private String preferParts;
     private String intro;
 }

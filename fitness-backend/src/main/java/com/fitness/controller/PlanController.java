@@ -62,6 +62,13 @@ public class PlanController {
         return Result.ok(planService.calendar(UserContext.getUserId(), year, month));
     }
 
+    @GetMapping("/calendar/detail")
+    @RequireLogin
+    public Result<Map<String, Object>> calendarDetail(@RequestParam(required = false) Integer year,
+                                                      @RequestParam(required = false) Integer month) {
+        return Result.ok(planService.calendarDetail(UserContext.getUserId(), year, month));
+    }
+
     @GetMapping("/{id}")
     @RequireLogin
     public Result<Map<String, Object>> detail(@PathVariable Long id) {

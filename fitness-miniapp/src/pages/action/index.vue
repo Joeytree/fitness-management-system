@@ -9,6 +9,7 @@
         confirm-type="search"
         @confirm="doSearch"
       />
+      <text class="create-entry" @click="goCreate">＋ 新建</text>
     </view>
 
     <view class="lib-body">
@@ -183,6 +184,9 @@ export default {
     },
     goDetail(a) {
       uni.navigateTo({ url: '/pages/action/detail?id=' + a.id })
+    },
+    goCreate() {
+      uni.navigateTo({ url: '/pages/custom/action-edit' })
     }
   }
 }
@@ -203,12 +207,23 @@ page {
   flex-shrink: 0;
   padding: 16rpx 24rpx;
   background: #f5f6f8;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 .search-input {
+  flex: 1;
   background: #fff;
   border-radius: 999rpx;
   padding: 16rpx 32rpx;
   font-size: 28rpx;
+}
+.create-entry {
+  flex: none;
+  font-size: 28rpx;
+  color: #10b981;
+  font-weight: 600;
+  padding: 8rpx 4rpx;
 }
 .lib-body {
   flex: 1;

@@ -6,6 +6,12 @@ spring:
   datasource:
     username: root
     password: 你的数据库密码
+    # Druid 监控台账号（可选覆盖；不写则用 application.yml 里的默认值 admin / admin123）
+    # 监控台地址：http://localhost:8081/druid
+    # druid:
+    #   stat-view-servlet:
+    #     login-username: admin
+    #     login-password: 你的监控台密码
 
 fitness:
   jwt:

@@ -28,6 +28,8 @@ public class Course {
     /** UGC 自定义课程提交者，管理端创建为空 */
     private Long userId;
     private Integer status;
+    /** 审核驳回原因 */
+    private String rejectReason;
     private Integer viewCount;
     private Integer favoriteCount;
     private Integer likeCount;

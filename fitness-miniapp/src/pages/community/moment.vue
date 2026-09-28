@@ -51,6 +51,7 @@
 <script>
 import { get, post, del } from '../../utils/request'
 import { avatarColor, avatarText } from '../../utils/index'
+import { fullUrl } from '../../utils/config'
 
 export default {
   data() {
@@ -72,8 +73,8 @@ export default {
     avatarColor,
     avatarText,
     imageList(images) {
-      if (Array.isArray(images)) return images
-      return (images || '').split(',').filter(Boolean)
+      const arr = Array.isArray(images) ? images : (images || '').split(',').filter(Boolean)
+      return arr.map(fullUrl)
     },
     async load() {
       try {

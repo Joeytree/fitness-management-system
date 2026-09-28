@@ -55,14 +55,9 @@
         <text class="menu-label">动作库</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" @click="go('/pages/action/ugc')">
+      <view class="menu-item" @click="go('/pages/custom/index')">
         <text class="menu-ico">✍️</text>
-        <text class="menu-label">提交自定义动作</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" @click="go('/pages/course/ugc')">
-        <text class="menu-ico">📚</text>
-        <text class="menu-label">提交自定义课程</text>
+        <text class="menu-label">我的自定义（动作/课程）</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" @click="go('/pages/health/checkin')">

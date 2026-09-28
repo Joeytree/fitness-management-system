@@ -23,6 +23,7 @@
         <text class="f-arrow">›</text>
       </view>
       <view v-if="!list.length" class="empty muted">暂无食物</view>
+      <view v-else class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
     </view>
   </view>
 </template>
@@ -38,12 +39,18 @@ export default {
       category: '全部',
       keyword: '',
       mealType: 1,
-      list: []
+      list: [],
+      page: 1,
+      hasMore: true,
+      loading: false
     }
   },
   onLoad(options) {
     this.mealType = options.mealType || 1
     this.load()
+  },
+  onReachBottom() {
+    this.loadMore()
   },
   methods: {
     selectCat(c) {
@@ -51,15 +58,40 @@ export default {
       this.load()
     },
     async load() {
+      this.page = 1
+      this.hasMore = true
+      this.loading = false
       try {
         const data = await get('/food', {
           keyword: this.keyword || undefined,
           category: this.category === '全部' ? undefined : this.category,
           page: 1,
-          pageSize: 50
+          pageSize: 20
         })
         this.list = data.list || []
+        this.hasMore = this.list.length < (data.total || 0)
       } catch (e) { /* 忽略 */ }
+    },
+    async loadMore() {
+      if (this.loading || !this.hasMore) return
+      this.loading = true
+      try {
+        const data = await get('/food', {
+          keyword: this.keyword || undefined,
+          category: this.category === '全部' ? undefined : this.category,
+          page: this.page + 1,
+          pageSize: 20
+        })
+        const list = data.list || []
+        if (list.length) {
+          this.list = this.list.concat(list)
+          this.page += 1
+          this.hasMore = this.list.length < (data.total || 0)
+        } else {
+          this.hasMore = false
+        }
+      } catch (e) { /* 忽略 */ }
+      this.loading = false
     },
     goRecord(f) {
       uni.navigateTo({ url: `/pages/diet/record?foodId=${f.id}&foodName=${encodeURIComponent(f.name)}&mealType=${this.mealType}` })
@@ -120,5 +152,11 @@ export default {
 .empty {
   text-align: center;
   padding: 80rpx 0;
+}
+.load-tip {
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 </style>

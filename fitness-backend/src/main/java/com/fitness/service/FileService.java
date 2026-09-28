@@ -9,7 +9,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -17,6 +19,11 @@ import java.util.UUID;
  */
 @Service
 public class FileService {
+
+    /** 允许上传的后缀白名单（图片/动图/视频），防止 .html/.svg/.js 等被当作活动内容解析（ISS-019） */
+    private static final Set<String> ALLOWED_EXT = Set.of(
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+            ".mp4", ".mov", ".m4v", ".avi");
 
     @Value("${fitness.upload.dir}")
     private String uploadDir;
@@ -32,7 +39,10 @@ public class FileService {
         String original = file.getOriginalFilename();
         String ext = "";
         if (original != null && original.contains(".")) {
-            ext = original.substring(original.lastIndexOf("."));
+            ext = original.substring(original.lastIndexOf(".")).toLowerCase(Locale.ROOT);
+        }
+        if (!ALLOWED_EXT.contains(ext)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "不支持的文件类型");
         }
         String filename = UUID.randomUUID().toString().replace("-", "") + ext;
         File dest = new File(dir, filename);

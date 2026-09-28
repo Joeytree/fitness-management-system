@@ -9,13 +9,16 @@ import com.fitness.entity.Food;
 import com.fitness.entity.User;
 import com.fitness.mapper.DietRecordMapper;
 import com.fitness.mapper.FoodMapper;
+import com.fitness.mapper.TrainingRecordMapper;
 import com.fitness.mapper.UserMapper;
+import com.fitness.entity.TrainingRecord;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +34,7 @@ public class DietService {
     private final DietRecordMapper dietRecordMapper;
     private final FoodMapper foodMapper;
     private final UserMapper userMapper;
+    private final TrainingRecordMapper trainingRecordMapper;
 
     public DietRecord add(Long userId, DietRecordRequest req) {
         Food food = foodMapper.selectById(req.getFoodId());
@@ -123,7 +127,13 @@ public class DietService {
         }
 
         int targetCalorie = estimateTargetCalorie(userId);
+        int totalCalorieInt = totalCalorie.setScale(0, RoundingMode.HALF_UP).intValue();
         boolean over = totalCalorie.compareTo(BigDecimal.valueOf(targetCalorie)) > 0;
+
+        // 当日运动消耗（training_record.calorie 汇总），用于「还可摄入」联动
+        int burnCalorie = sumBurnCalorie(userId, d);
+        // 还可摄入 = 推荐摄入 - 饮食摄入 + 运动消耗（不低于 0）
+        int remainCalorie = Math.max(0, targetCalorie - totalCalorieInt + burnCalorie);
 
         Map<String, Object> data = new HashMap<>();
         data.put("totalCalorie", totalCalorie.setScale(0, RoundingMode.HALF_UP));
@@ -131,9 +141,31 @@ public class DietService {
         data.put("carb", carb.setScale(1, RoundingMode.HALF_UP));
         data.put("fat", fat.setScale(1, RoundingMode.HALF_UP));
         data.put("targetCalorie", targetCalorie);
+        data.put("burnCalorie", burnCalorie);
+        data.put("remainCalorie", remainCalorie);
         data.put("over", over);
         data.put("mealType", groupByMeal(records));
         return data;
+    }
+
+    /**
+     * 汇总某日运动消耗（training_record.calorie 求和）
+     */
+    private int sumBurnCalorie(Long userId, LocalDate date) {
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+        List<TrainingRecord> list = trainingRecordMapper.selectList(
+                new LambdaQueryWrapper<TrainingRecord>()
+                        .eq(TrainingRecord::getUserId, userId)
+                        .ge(TrainingRecord::getStartTime, dayStart)
+                        .lt(TrainingRecord::getStartTime, dayEnd));
+        int sum = 0;
+        for (TrainingRecord t : list) {
+            if (t.getCalorie() != null) {
+                sum += t.getCalorie();
+            }
+        }
+        return sum;
     }
 
     private Map<String, BigDecimal> groupByMeal(List<DietRecord> records) {

@@ -479,7 +479,7 @@ public class AdminContentService {
         List<Map<String, Object>> result = new ArrayList<>();
         switch (type == null ? "moment" : type) {
             case "action" -> actionMapper.selectList(new LambdaQueryWrapper<Action>()
-                    .ne(Action::getStatus, 1).orderByDesc(Action::getId))
+                    .in(Action::getStatus, 2, 3).orderByDesc(Action::getId))
                     .forEach(a -> result.add(Map.of("id", a.getId(), "type", "action", "name", a.getName() == null ? "" : a.getName(),
                             "content", a.getSteps() == null ? "" : a.getSteps(),
                             "createTime", a.getCreateTime() == null ? "" : a.getCreateTime(),
@@ -487,12 +487,13 @@ public class AdminContentService {
                             "rejectReason", a.getRejectReason() == null ? "" : a.getRejectReason(),
                             "userName", "用户投稿")));
             case "course" -> courseMapper.selectList(new LambdaQueryWrapper<Course>()
-                    .ne(Course::getStatus, 1).orderByDesc(Course::getId))
+                    .in(Course::getStatus, 2, 3).orderByDesc(Course::getId))
                     .forEach(c -> result.add(Map.of("id", c.getId(), "type", "course", "name", c.getName() == null ? "" : c.getName(),
                             "content", c.getIntro() == null ? "" : c.getIntro(),
                             "createTime", c.getCreateTime() == null ? "" : c.getCreateTime(),
                             "status", c.getStatus() == 2 ? 1 : 2,
-                            "rejectReason", "", "userName", "用户投稿")));
+                            "rejectReason", c.getRejectReason() == null ? "" : c.getRejectReason(),
+                            "userName", "用户投稿")));
             case "comment" -> courseCommentMapper.selectList(new LambdaQueryWrapper<CourseComment>()
                     .ne(CourseComment::getStatus, 0).orderByDesc(CourseComment::getId))
                     .forEach(c -> result.add(Map.of("id", c.getId(), "type", "comment", "name", "课程评论",
@@ -572,7 +573,13 @@ public class AdminContentService {
                 a.setRejectReason(reason);
                 actionMapper.updateById(a);
             }
-            case "course" -> updateCourseStatus(id, 3);
+            case "course" -> {
+                Course c = courseMapper.selectById(id);
+                if (c == null) throw new BusinessException(ResultCode.NOT_FOUND, "课程不存在");
+                c.setStatus(3);
+                c.setRejectReason(reason);
+                courseMapper.updateById(c);
+            }
             case "comment" -> {
                 CourseComment c = courseCommentMapper.selectById(id);
                 if (c == null) throw new BusinessException(ResultCode.NOT_FOUND, "评论不存在");
