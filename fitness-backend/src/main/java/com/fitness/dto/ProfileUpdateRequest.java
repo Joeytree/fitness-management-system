@@ -17,5 +17,7 @@ public class ProfileUpdateRequest {
     private Integer level;
     /** 偏好部位，逗号分隔 */
     private String preferParts;
+    /** 禁忌人群，逗号分隔（腰伤/膝伤/肩伤等，选填，AI 私教安全底线） */
+    private String contraindication;
     private String intro;
 }

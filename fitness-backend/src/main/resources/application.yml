@@ -76,6 +76,12 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
 
 mybatis-plus:
   configuration:
@@ -100,3 +106,14 @@ fitness:
   wechat:
     appid: ${WECHAT_APPID:wx6193281e02e83bc0}
     secret: ${WECHAT_APPSECRET:}
+  cors:
+    # 管理端来源白名单：localhost 与 127.0.0.1 都放行，避免用不同地址访问时触发 CORS 403
+    allowed-origins: ${FITNESS_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+# AI 私教（DeepSeek，直接 HTTP 调用 OpenAI 兼容接口）
+# api-key 真实值放 config/application-local.yml（gitignored），不入库
+ai:
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    model: ${DEEPSEEK_MODEL:deepseek-chat}

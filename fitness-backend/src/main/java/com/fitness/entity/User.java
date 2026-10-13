@@ -34,6 +34,8 @@ public class User {
     private String tags;
     /** 偏好部位，逗号分隔（推荐引导填写） */
     private String preferParts;
+    /** 禁忌人群，逗号分隔（腰伤/膝伤/肩伤等，AI 私教安全底线，选填） */
+    private String contraindication;
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

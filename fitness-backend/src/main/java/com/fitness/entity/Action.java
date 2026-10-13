@@ -19,7 +19,15 @@ public class Action {
     private Long id;
     private String name;
     private String part;
+    /** 次肌群，逗号分隔（AI 私教：避免连续重复刺激同肌群） */
+    private String secondaryMuscles;
     private Integer difficulty;
+    /** 动作类型：1复合/2孤立（AI 私教：复合优先排序） */
+    private Integer mechanic;
+    /** 发力类型：1推/2拉/3静态（AI 私教：推拉平衡） */
+    private Integer forceType;
+    /** 禁忌人群，逗号分隔（腰伤/膝伤/肩伤等，AI 私教安全底线） */
+    private String contraindication;
     private String equipment;
     private String steps;
     private String tips;
