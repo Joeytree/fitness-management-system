@@ -49,6 +49,18 @@
       </button>
     </view>
 
+    <!-- AI 私教入口 -->
+    <view class="ai-entry" @click="go('/pages/ai/chat')">
+      <view class="ai-entry-left">
+        <view class="ai-entry-ico">🤖</view>
+        <view class="ai-entry-text">
+          <view class="ai-entry-title">AI 私教</view>
+          <view class="ai-entry-sub">智能定制课程 · 健身知识问答</view>
+        </view>
+      </view>
+      <text class="ai-entry-arrow">›</text>
+    </view>
+
     <!-- 快捷入口 -->
     <view class="quick-grid">
       <view class="quick-item" @click="go('/pages/health/checkin')">
@@ -70,7 +82,7 @@
     </view>
 
     <!-- 推荐计划 -->
-    <view class="section-title" @click="go('/pages/recommend/index')">为你推荐 <text class="more">更多 ›</text></view>
+    <view class="section-title" @click="go('/pages/plan/recommend')">推荐计划 <text class="more">更多 ›</text></view>
     <view class="rec-list">
       <view v-for="p in plans" :key="p.id" class="rec-card" @click="clickPlan(p)">
         <view class="card-thumb thumb-plan">
@@ -342,6 +354,45 @@ export default {
   padding: 32rpx 0;
   box-shadow: 0 6rpx 24rpx rgba(16, 185, 129, 0.06);
   margin-top: 20rpx;
+}
+.ai-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border-radius: 28rpx;
+  padding: 28rpx 32rpx;
+  margin-top: 20rpx;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.22);
+}
+.ai-entry-left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.ai-entry-ico {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+}
+.ai-entry-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
+.ai-entry-sub {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 4rpx;
+}
+.ai-entry-arrow {
+  font-size: 44rpx;
+  color: rgba(255, 255, 255, 0.5);
 }
 .quick-item {
   flex: 1;

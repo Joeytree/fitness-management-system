@@ -70,6 +70,18 @@
           >{{ p }}</text>
         </view>
       </view>
+      <view class="form-row">
+        <text class="label">禁忌(选填)</text>
+        <view class="radio-group">
+          <text
+            v-for="c in CONTRA"
+            :key="c"
+            class="radio"
+            :class="{ on: selectedContra.includes(c) }"
+            @click="toggleContra(c)"
+          >{{ c }}</text>
+        </view>
+      </view>
     </view>
 
     <button class="btn-primary save-btn" @click="save">保存（更新推荐标签）</button>
@@ -88,6 +100,8 @@ export default {
       form: { nickname: '', avatar: '', intro: '', birthday: '', gender: 1, height: 170, goal: 1, level: 1 },
       PARTS,
       selectedParts: [],
+      CONTRA: ['腰伤', '膝伤', '肩伤', '手腕伤', '肘伤', '踝伤', '背伤'],
+      selectedContra: [],
       goals: [
         { value: 1, label: '增肌' },
         { value: 2, label: '减脂' },
@@ -111,6 +125,7 @@ export default {
         const data = await get('/user/profile')
         this.form = data
         this.selectedParts = (data.preferParts || '').split(',').map(s => s.trim()).filter(Boolean)
+        this.selectedContra = (data.contraindication || '').split(',').map(s => s.trim()).filter(Boolean)
       } catch (e) { /* 忽略 */ }
     },
     onBirthday(e) {
@@ -120,6 +135,11 @@ export default {
       const i = this.selectedParts.indexOf(p)
       if (i >= 0) this.selectedParts.splice(i, 1)
       else this.selectedParts.push(p)
+    },
+    toggleContra(c) {
+      const i = this.selectedContra.indexOf(c)
+      if (i >= 0) this.selectedContra.splice(i, 1)
+      else this.selectedContra.push(c)
     },
     chooseAvatar() {
       uni.chooseImage({
@@ -144,7 +164,8 @@ export default {
           height: Number(this.form.height),
           goal: this.form.goal,
           level: this.form.level,
-          preferParts: this.selectedParts.join(',')
+          preferParts: this.selectedParts.join(','),
+          contraindication: this.selectedContra.join(',')
         })
         const token = uni.getStorageSync('token')
         setLogin(token, data)
