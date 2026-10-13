@@ -89,6 +89,7 @@ generated-images/
 .codebuddy/
 CODEBUDDY.md
 overview.md
-course-detail-preview.html
-course-page-preview.html
-course-train-preview.html
+# 毕设过程文档（需求/论文/图表/实验材料等）
+毕设支持/
+# 页面预览 HTML（统一 glob，新增预览无需再改此处）
+*-preview.html
