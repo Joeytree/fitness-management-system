@@ -37,7 +37,7 @@
 
 <script>
 import { post } from '../../utils/request'
-import config, { fullUrl } from '../../utils/config'
+import { fullUrl } from '../../utils/config'
 
 export default {
   data() {

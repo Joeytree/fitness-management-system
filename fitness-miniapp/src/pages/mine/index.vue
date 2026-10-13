@@ -75,6 +75,11 @@
         <text class="menu-label">饮食管理</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" @click="go('/pages/training/history')">
+        <text class="menu-ico">🏃</text>
+        <text class="menu-label">训练历史</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" @click="go('/pages/mine/notifications')">
         <text class="menu-ico">🔔</text>
         <text class="menu-label">消息通知</text>
@@ -87,7 +92,7 @@
 </template>
 
 <script>
-import { get } from '../../utils/request'
+import { get, post } from '../../utils/request'
 import { getUserInfo, logout, goalText, levelText, avatarText } from '../../utils/index'
 
 export default {
@@ -130,6 +135,7 @@ export default {
         content: '确认退出登录？',
         success: (res) => {
           if (res.confirm) {
+            post('/auth/logout').catch(() => {})
             logout()
             uni.reLaunch({ url: '/pages/login/index' })
           }
@@ -199,11 +205,6 @@ export default {
   font-size: 22rpx;
   opacity: 0.85;
   margin-top: 6rpx;
-}
-.p-tags {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 12rpx;
 }
 .p-tag {
   background: rgba(255, 255, 255, 0.2);

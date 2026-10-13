@@ -89,11 +89,12 @@
 </template>
 
 <script>
-import { get, post } from '../../utils/request'
+import { get, post, put } from '../../utils/request'
 
 export default {
   data() {
     return {
+      id: null,
       name: '',
       goal: 1,
       freq: 3,
@@ -114,10 +115,32 @@ export default {
       loading: false
     }
   },
-  onLoad() {
+  onLoad(options) {
     this.loadCourses()
+    if (options && options.id) {
+      this.id = options.id
+      uni.setNavigationBarTitle({ title: '编辑计划' })
+      this.loadDetail()
+    }
   },
   methods: {
+    async loadDetail() {
+      try {
+        const detail = await get('/plan/' + this.id)
+        const plan = detail.plan || {}
+        this.name = plan.name || ''
+        this.goal = plan.goal || 1
+        const m1 = (plan.cycle || '').match(/每周(\d+)练/)
+        const m2 = (plan.cycle || '').match(/每次(\d+)分钟/)
+        if (m1) this.freq = Number(m1[1])
+        if (m2) this.duration = Number(m2[1])
+        this.selected = (detail.courses || []).map(c => ({
+          courseId: c.course ? c.course.id : null,
+          name: c.course ? c.course.name : '',
+          day: c.dayNo || 1
+        })).filter(x => x.courseId)
+      } catch (e) { /* 已提示 */ }
+    },
     async loadCourses() {
       this.page = 1
       this.hasMore = true
@@ -175,18 +198,23 @@ export default {
         uni.showToast({ title: '请添加课程', icon: 'none' })
         return
       }
+      const payload = {
+        name: this.name,
+        goal: this.goal,
+        level: 1,
+        cycle: `每周${this.freq}练·每次${this.duration}分钟`,
+        courses: this.selected.map((c, i) => ({
+          courseId: c.courseId,
+          dayNo: c.day || 1,
+          sort: i + 1
+        }))
+      }
       try {
-        await post('/plan', {
-          name: this.name,
-          goal: this.goal,
-          level: 1,
-          cycle: `每周${this.freq}练·每次${this.duration}分钟`,
-          courses: this.selected.map((c, i) => ({
-            courseId: c.courseId,
-            dayNo: c.day || 1,
-            sort: i + 1
-          }))
-        })
+        if (this.id) {
+          await put('/plan/' + this.id, payload)
+        } else {
+          await post('/plan', payload)
+        }
         uni.showToast({ title: '保存成功', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 600)
       } catch (e) { /* 已提示 */ }

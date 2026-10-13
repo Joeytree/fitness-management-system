@@ -626,6 +626,17 @@ export default {
         await put('/course/' + this.id + '/progress', { status: 2 })
       } catch (e) { /* 忽略 */ }
       this.stats = { duration, calorie, checkIn }
+      // 训练完成自评（AI 私教反馈闭环 F5）
+      setTimeout(() => this.askFeedback(), 800)
+    },
+    askFeedback() {
+      uni.showActionSheet({
+        itemList: ['太简单了', '难度适中', '太难了'],
+        success: (res) => {
+          const difficulty = res.tapIndex === 0 ? 1 : (res.tapIndex === 1 ? 2 : 3)
+          post('/ai/feedback', { recordId: this.recordId, difficulty }).catch(() => {})
+        }
+      })
     },
     // ===== 退出 =====
     askExit() {

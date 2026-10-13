@@ -68,7 +68,8 @@
               </view>
             </view>
           </view>
-          <view v-if="!list.length" class="empty muted">暂无课程</view>
+          <view v-if="loadFailed" class="empty muted" @click="reload">加载失败，点击重试</view>
+          <view v-else-if="!list.length" class="empty muted">暂无课程</view>
           <view v-else class="load-tip">{{ loading ? '加载中…' : (hasMore ? '上拉加载更多' : '没有更多了') }}</view>
         </scroll-view>
       </view>
@@ -110,6 +111,7 @@ export default {
       page: 1,
       hasMore: true,
       loading: false,
+      loadFailed: false,
       // 筛选状态
       difficulty: null,
       part: null,
@@ -200,6 +202,7 @@ export default {
       this.page = 1
       this.hasMore = true
       this.loading = false
+      this.loadFailed = false
       try {
         const data = await get('/course', {
           category: this.category === '全部' ? undefined : this.category,
@@ -213,7 +216,9 @@ export default {
         })
         this.list = data.list || []
         this.hasMore = this.list.length < (data.total || 0)
-      } catch (e) { /* 忽略 */ }
+      } catch (e) {
+        this.loadFailed = true
+      }
     },
     async loadMore() {
       if (this.loading || !this.hasMore) return

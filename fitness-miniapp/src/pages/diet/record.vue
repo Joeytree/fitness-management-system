@@ -29,11 +29,12 @@
 </template>
 
 <script>
-import { post } from '../../utils/request'
+import { post, put } from '../../utils/request'
 
 export default {
   data() {
     return {
+      id: null,
       foodId: null,
       foodName: '',
       amount: 100,
@@ -47,8 +48,13 @@ export default {
     }
   },
   onLoad(options) {
+    if (options.id) {
+      this.id = Number(options.id)
+      uni.setNavigationBarTitle({ title: '编辑饮食' })
+    }
     if (options.foodId) this.foodId = Number(options.foodId)
     if (options.foodName) this.foodName = decodeURIComponent(options.foodName)
+    if (options.amount) this.amount = Number(options.amount)
     if (options.mealType) this.mealType = Number(options.mealType)
   },
   methods: {
@@ -64,13 +70,18 @@ export default {
         uni.showToast({ title: '请输入摄入量', icon: 'none' })
         return
       }
+      const payload = {
+        foodId: this.foodId,
+        amount: Number(this.amount),
+        mealType: this.mealType
+      }
       try {
-        await post('/diet/record', {
-          foodId: this.foodId,
-          amount: Number(this.amount),
-          mealType: this.mealType
-        })
-        uni.showToast({ title: '记录成功', icon: 'success' })
+        if (this.id) {
+          await put('/diet/record/' + this.id, payload)
+        } else {
+          await post('/diet/record', payload)
+        }
+        uni.showToast({ title: this.id ? '已更新' : '记录成功', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 600)
       } catch (e) { /* 已提示 */ }
     }

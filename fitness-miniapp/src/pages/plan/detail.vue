@@ -9,21 +9,29 @@
     </view>
 
     <view class="section-title">课程清单（每天完成一门）</view>
-    <view v-for="day in detail.days" :key="day.dayNo" class="day-block">
-      <view class="day-title">第 {{ day.dayNo }} 天</view>
-      <view v-for="item in day.courses" :key="item.planCourseId" class="course-item" @click="goCourse(item.course)">
-        <view class="c-thumb">
-          <image v-if="item.course && item.course.cover" class="c-img" :src="fullUrl(item.course.cover)" mode="aspectFill" />
-          <text v-else class="c-ico">🏋️</text>
-        </view>
-        <view class="c-body">
-          <view class="c-name">{{ item.course ? item.course.name : '' }}</view>
-          <view class="c-meta muted" v-if="item.course">
-            {{ item.course.category || '' }} · {{ item.course.duration || 0 }} 分钟 · 难度{{ diffText(item.course.difficulty) }}
+    <view v-for="(wk, wi) in weeks" :key="wi" class="week-block">
+      <view v-if="wk.week" class="week-title">{{ planLabel(wk.week) }}</view>
+      <view v-for="day in wk.days" :key="day.dayNo" class="day-block">
+        <view class="day-title">第 {{ day.dayNo }} 天</view>
+        <view v-for="item in day.courses" :key="item.planCourseId" class="course-item" @click="goCourse(item.course)">
+          <view class="c-thumb">
+            <image v-if="item.course && item.course.cover" class="c-img" :src="fullUrl(item.course.cover)" mode="aspectFill" />
+            <text v-else class="c-ico">🏋️</text>
           </view>
+          <view class="c-body">
+            <view class="c-name">{{ item.course ? item.course.name : '' }}</view>
+            <view class="c-meta muted" v-if="item.course">
+              {{ item.course.category || '' }} · {{ item.course.duration || 0 }} 分钟 · 难度{{ diffText(item.course.difficulty) }}
+            </view>
+          </view>
+          <text class="c-arrow">›</text>
         </view>
-        <text class="c-arrow">›</text>
       </view>
+    </view>
+
+    <view class="ops">
+      <button class="op-btn edit" @click="goEdit">编辑计划</button>
+      <button class="op-btn del" @click="onDelete">删除计划</button>
     </view>
 
     <button class="btn-primary start-btn" @click="startTrain">开始训练（第一天）</button>
@@ -31,7 +39,7 @@
 </template>
 
 <script>
-import { get } from '../../utils/request'
+import { get, del } from '../../utils/request'
 import { goalText, diffText } from '../../utils/index'
 import { fullUrl } from '../../utils/config'
 
@@ -48,10 +56,26 @@ export default {
   onShow() {
     if (this.id) this.load()
   },
+  computed: {
+    weeks() {
+      const days = this.detail.days || []
+      const hasWeek = days.some(d => d.week != null)
+      if (!hasWeek) return [{ week: null, days }]
+      const map = {}
+      for (const d of days) {
+        const w = d.week || 1
+        ;(map[w] = map[w] || []).push(d)
+      }
+      return Object.keys(map).sort((a, b) => a - b).map(k => ({ week: Number(k), days: map[k] }))
+    }
+  },
   methods: {
     goalText,
     diffText,
     fullUrl,
+    planLabel(week) {
+      return { 1: '第 1 周 · 适应期', 2: '第 2 周 · 递增期', 3: '第 3 周 · 递增期', 4: '第 4 周 · 减载期' }[week] || ('第 ' + week + ' 周')
+    },
     async load() {
       try {
         this.detail = await get('/plan/' + this.id)
@@ -61,6 +85,23 @@ export default {
       if (c && c.id) {
         uni.navigateTo({ url: '/pages/course/train?id=' + c.id })
       }
+    },
+    goEdit() {
+      uni.navigateTo({ url: '/pages/plan/create?id=' + this.id })
+    },
+    onDelete() {
+      uni.showModal({
+        title: '删除计划',
+        content: '确定删除该计划吗？删除后不可恢复。',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await del('/plan/' + this.id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+            setTimeout(() => uni.navigateBack(), 500)
+          } catch (e) { /* 已提示 */ }
+        }
+      })
     },
     startTrain() {
       const first = this.detail.days && this.detail.days[0]
@@ -102,6 +143,18 @@ export default {
   font-size: 32rpx;
   font-weight: 700;
   margin: 32rpx 8rpx 20rpx;
+}
+.week-block {
+  margin-bottom: 8rpx;
+}
+.week-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #065f46;
+  background: #ecfdf5;
+  padding: 12rpx 20rpx;
+  border-radius: 12rpx;
+  margin: 20rpx 0 12rpx;
 }
 .day-block {
   margin-bottom: 8rpx;
@@ -168,6 +221,29 @@ export default {
   margin-top: 40rpx;
 }
 .start-btn::after {
+  border: none;
+}
+.ops {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+.op-btn {
+  flex: 1;
+  padding: 20rpx 0;
+  border-radius: 44rpx;
+  font-size: 28rpx;
+  background: #fff;
+}
+.op-btn.edit {
+  color: #10b981;
+  border: 1rpx solid #10b981;
+}
+.op-btn.del {
+  color: #ef4444;
+  border: 1rpx solid #ef4444;
+}
+.op-btn::after {
   border: none;
 }
 </style>

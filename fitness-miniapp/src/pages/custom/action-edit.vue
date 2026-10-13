@@ -70,7 +70,7 @@
 <script>
 import { get, post, put } from '../../utils/request'
 import { PARTS } from '../../utils/index'
-import config, { fullUrl } from '../../utils/config'
+import { fullUrl } from '../../utils/config'
 
 export default {
   data() {

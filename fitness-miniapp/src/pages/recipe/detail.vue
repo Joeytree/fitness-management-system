@@ -1,7 +1,13 @@
 <template>
   <view class="page-pad" v-if="recipe.id">
     <view class="cover" :style="{ background: coverGrad(recipe.goal) }">
-      <text class="cover-ico">🍱</text>
+      <image
+        v-if="recipe.cover"
+        class="cover-img"
+        :src="fullUrl(recipe.cover)"
+        mode="aspectFill"
+      />
+      <text v-else class="cover-ico">🍱</text>
     </view>
     <view class="head-card">
       <view class="name">{{ recipe.name }}</view>
@@ -49,6 +55,7 @@
 <script>
 import { get, post, del } from '../../utils/request'
 import { goalText } from '../../utils/index'
+import { fullUrl } from '../../utils/config'
 
 const GRADS = {
   1: 'linear-gradient(135deg,#3b82f6,#1d4ed8)',
@@ -71,6 +78,7 @@ export default {
   },
   methods: {
     goalText,
+    fullUrl,
     coverGrad(g) {
       return GRADS[g] || 'linear-gradient(135deg,#10b981,#059669)'
     },
@@ -114,6 +122,12 @@ function parseLine(line) {
   align-items: center;
   justify-content: center;
   color: #fff;
+  overflow: hidden;
+}
+.cover-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 32rpx;
 }
 .cover-ico {
   font-size: 120rpx;
@@ -122,7 +136,7 @@ function parseLine(line) {
   background: #fff;
   border-radius: 28rpx;
   padding: 28rpx;
-  margin-top: -40rpx;
+  margin-top: 20rpx;
   position: relative;
   box-shadow: 0 6rpx 20rpx rgba(16, 185, 129, 0.06);
 }

@@ -33,7 +33,8 @@
         <view class="bar-tip muted">{{ progressOf(p) }}% · {{ countByPlan(p.id) }} 次打卡</view>
       </view>
     </view>
-    <view v-if="!list.length" class="empty muted">还没有计划，去套用模板吧</view>
+    <view v-if="loadFailed" class="empty muted" @click="load">加载失败，点击重试</view>
+    <view v-else-if="!list.length" class="empty muted">还没有计划，去套用模板吧</view>
 
     <view class="create-fab" @click="go('/pages/plan/create')">＋</view>
   </view>
@@ -56,7 +57,8 @@ export default {
   data() {
     return {
       list: [],
-      checkDates: []
+      checkDates: [],
+      loadFailed: false
     }
   },
   onShow() {
@@ -73,9 +75,12 @@ export default {
       return (PLAN_STYLE[goal] || FALLBACK).emoji
     },
     async load() {
+      this.loadFailed = false
       try {
         this.list = await get('/plan')
-      } catch (e) { /* 忽略 */ }
+      } catch (e) {
+        this.loadFailed = true
+      }
     },
     async loadCheckDates() {
       const now = new Date()
@@ -94,17 +99,6 @@ export default {
       const planCount = this.list.length || 1
       const myShare = (this.checkDates || []).length / planCount
       return Math.min(100, Math.round((myShare / days) * 100 + (p.id * 3) % 10))
-    },
-    statusClass(p) {
-      if ((this.checkDates || []).length >= 5) return 'done'
-      if ((this.checkDates || []).length > 0) return 'going'
-      return 'idle'
-    },
-    statusText(p) {
-      const c = this.checkDates.length
-      if (c >= 5) return '已完成'
-      if (c > 0) return '进行中'
-      return '未开始'
     },
     go(url) {
       uni.navigateTo({ url })
@@ -148,11 +142,6 @@ export default {
   font-size: 32rpx;
   font-weight: 700;
   margin: 32rpx 8rpx 20rpx;
-}
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
 }
 .plan-card {
   background: #fff;
@@ -220,34 +209,6 @@ export default {
 }
 .plan-progress {
   padding: 20rpx 24rpx 24rpx;
-}
-.plan-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.plan-name {
-  font-size: 32rpx;
-  font-weight: 700;
-}
-.pill {
-  padding: 6rpx 20rpx;
-  border-radius: 999rpx;
-  font-size: 22rpx;
-  background: #f3f4f6;
-  color: #6b7280;
-}
-.pill.going {
-  background: #ecfdf5;
-  color: #065f46;
-}
-.pill.done {
-  background: #fef3c7;
-  color: #92400e;
-}
-.plan-cycle {
-  margin-top: 12rpx;
-  font-size: 26rpx;
 }
 .bar {
   height: 12rpx;

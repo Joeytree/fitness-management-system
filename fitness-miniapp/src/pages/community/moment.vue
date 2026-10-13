@@ -8,6 +8,7 @@
           <view class="m-name">{{ moment.nickname }}</view>
           <view class="m-time muted">{{ moment.createTime }}</view>
         </view>
+        <text v-if="myId != null && moment.userId == myId" class="m-del" @click="onDelete">删除</text>
       </view>
       <view class="m-content">{{ moment.content }}</view>
       <view v-if="moment.images" class="m-images">
@@ -50,7 +51,7 @@
 
 <script>
 import { get, post, del } from '../../utils/request'
-import { avatarColor, avatarText } from '../../utils/index'
+import { avatarColor, avatarText, getUserInfo } from '../../utils/index'
 import { fullUrl } from '../../utils/config'
 
 export default {
@@ -60,13 +61,15 @@ export default {
       moment: {},
       comments: [],
       commentContent: '',
-      replyTarget: null
+      replyTarget: null,
+      myId: null
     }
   },
   onLoad(options) {
     this.id = options.id
   },
   onShow() {
+    this.myId = (getUserInfo() || {}).id
     if (this.id) this.load()
   },
   methods: {
@@ -105,6 +108,20 @@ export default {
         this.load()
       } catch (e) { /* 忽略 */ }
     },
+    onDelete() {
+      uni.showModal({
+        title: '删除动态',
+        content: '确定删除这条动态吗？删除后不可恢复。',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await del('/moment/' + this.id)
+            uni.showToast({ title: '已删除', icon: 'success' })
+            setTimeout(() => uni.navigateBack(), 500)
+          } catch (e) { /* 已提示 */ }
+        }
+      })
+    },
     replyTo(c) {
       this.replyTarget = c
       this.commentContent = ''
@@ -137,6 +154,11 @@ export default {
 }
 .m-user {
   flex: 1;
+}
+.m-del {
+  color: #ef4444;
+  font-size: 26rpx;
+  flex-shrink: 0;
 }
 .m-name {
   font-size: 28rpx;

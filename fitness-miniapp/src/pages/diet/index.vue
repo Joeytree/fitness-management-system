@@ -60,16 +60,17 @@
         <text class="meal-cal">{{ m.totalCal }} 千卡</text>
         <text class="meal-add" @click="goRecord(m.type)">＋</text>
       </view>
-      <view v-for="r in m.items" :key="r.id" class="meal-row">
+      <view v-for="r in m.items" :key="r.id" class="meal-row" @click="editRecord(r)">
         <text class="row-ico">🍽</text>
         <text class="row-name">{{ r.foodName }}</text>
         <text class="row-amount muted">{{ r.amount }}g</text>
         <text class="row-cal">{{ r.calorie }}千卡</text>
-        <text class="row-x" @click="delRecord(r.id)">✕</text>
+        <text class="row-x" @click.stop="delRecord(r.id)">✕</text>
       </view>
     </view>
 
-    <view v-if="!records.length" class="empty muted">今天还没有饮食记录，去添加第一顿吧～</view>
+    <view v-if="loadFailed" class="empty muted" @click="load">加载失败，点击重试</view>
+    <view v-else-if="!records.length" class="empty muted">今天还没有饮食记录，去添加第一顿吧～</view>
   </view>
 </template>
 
@@ -81,6 +82,7 @@ export default {
     return {
       summary: {},
       records: [],
+      loadFailed: false,
       mealDefs: [
         { type: 1, label: '早餐', icon: '🌅' },
         { type: 2, label: '午餐', icon: '☀️' },
@@ -122,13 +124,16 @@ export default {
       return n % 1 === 0 ? String(n) : n.toFixed(1)
     },
     async load() {
+      this.loadFailed = false
       try {
         this.summary = await get('/diet/summary')
       } catch (e) { /* 忽略 */ }
       try {
         this.records = await get('/diet/record')
         this.$nextTick(() => setTimeout(() => this.drawRing(), 60))
-      } catch (e) { /* 忽略 */ }
+      } catch (e) {
+        this.loadFailed = true
+      }
     },
     // 缺口圆环：缺口居中在顶部，绿色段表示 已摄入/推荐
     drawRing() {
@@ -180,6 +185,11 @@ export default {
     },
     goRecord(type) {
       uni.navigateTo({ url: '/pages/diet/search?mealType=' + type })
+    },
+    editRecord(r) {
+      uni.navigateTo({
+        url: `/pages/diet/record?id=${r.id}&foodId=${r.foodId}&foodName=${encodeURIComponent(r.foodName || '')}&amount=${r.amount}&mealType=${r.mealType}`
+      })
     },
     async delRecord(id) {
       try {
