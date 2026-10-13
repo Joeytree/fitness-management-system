@@ -22,6 +22,7 @@
     { "path": "pages/plan/detail", "style": { "navigationBarTitleText": "计划详情" } },
     { "path": "pages/plan/create", "style": { "navigationBarTitleText": "创建计划" } },
     { "path": "pages/plan/template", "style": { "navigationBarTitleText": "计划模板" } },
+    { "path": "pages/plan/recommend", "style": { "navigationBarTitleText": "推荐计划" } },
     { "path": "pages/plan/calendar", "style": { "navigationBarTitleText": "训练日历" } },
     { "path": "pages/diet/index", "style": { "navigationBarTitleText": "饮食记录" } },
     { "path": "pages/diet/search", "style": { "navigationBarTitleText": "食物库" } },
@@ -40,7 +41,9 @@
     { "path": "pages/user/following", "style": { "navigationBarTitleText": "关注与粉丝" } },
     { "path": "pages/mine/profile", "style": { "navigationBarTitleText": "编辑资料" } },
     { "path": "pages/mine/favorites", "style": { "navigationBarTitleText": "我的收藏" } },
-    { "path": "pages/mine/notifications", "style": { "navigationBarTitleText": "消息通知" } }
+    { "path": "pages/mine/notifications", "style": { "navigationBarTitleText": "消息通知" } },
+    { "path": "pages/ai/chat", "style": { "navigationBarTitleText": "AI 私教" } },
+    { "path": "pages/training/history", "style": { "navigationBarTitleText": "训练历史" } }
   ],
   "tabBar": {
     "custom": true,
