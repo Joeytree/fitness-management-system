@@ -6,11 +6,9 @@ import com.fitness.entity.Article;
 import com.fitness.entity.Course;
 import com.fitness.entity.Food;
 import com.fitness.entity.Permission;
-import com.fitness.entity.PlanAction;
 import com.fitness.entity.Recipe;
 import com.fitness.entity.Role;
 import com.fitness.entity.RolePermission;
-import com.fitness.entity.TrainingPlan;
 import com.fitness.entity.User;
 import com.fitness.mapper.ActionMapper;
 import com.fitness.mapper.AdminMapper;
@@ -18,11 +16,9 @@ import com.fitness.mapper.ArticleMapper;
 import com.fitness.mapper.CourseMapper;
 import com.fitness.mapper.FoodMapper;
 import com.fitness.mapper.PermissionMapper;
-import com.fitness.mapper.PlanActionMapper;
 import com.fitness.mapper.RecipeMapper;
 import com.fitness.mapper.RoleMapper;
 import com.fitness.mapper.RolePermissionMapper;
-import com.fitness.mapper.TrainingPlanMapper;
 import com.fitness.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +45,6 @@ public class DataInitializer implements CommandLineRunner {
     private final CourseMapper courseMapper;
     private final FoodMapper foodMapper;
     private final RecipeMapper recipeMapper;
-    private final TrainingPlanMapper planMapper;
-    private final PlanActionMapper planActionMapper;
     private final ArticleMapper articleMapper;
     private final com.fitness.mapper.MomentMapper momentMapper;
     private final com.fitness.mapper.MomentCommentMapper momentCommentMapper;
@@ -67,7 +61,6 @@ public class DataInitializer implements CommandLineRunner {
         initFood();
         initRecipe();
         initCourse();
-        initPlanTemplate();
         initArticle();
         initReviewData();
         log.info("种子数据初始化完成");
@@ -227,33 +220,6 @@ public class DataInitializer implements CommandLineRunner {
         insertCourse("背部力量进阶", "增肌", "强化背部肌群，引体向上与划船系统训练", 2, 50, 320);
         insertCourse("全身燃脂 HIIT", "HIIT", "高强度间歇训练，快速燃脂提升心肺", 3, 30, 400);
         insertCourse("新手塑形基础", "塑形", "适合新手的全身塑形训练", 1, 35, 200);
-    }
-
-    private void initPlanTemplate() {
-        if (planMapper.selectCount(null) > 0) {
-            return;
-        }
-        // 模板1：增肌新手（每周3练，分3天）
-        TrainingPlan p1 = insertPlan(null, "增肌新手入门计划", 1, 1, "每周3练", "增肌,新手", 1);
-        bindAction(p1.getId(), 1L, 1, 3, 12, 60, 1);   // Day1 杠铃卧推
-        bindAction(p1.getId(), 2L, 1, 3, 15, 45, 2);   // Day1 俯卧撑
-        bindAction(p1.getId(), 9L, 2, 3, 12, 90, 3);   // Day2 深蹲
-        bindAction(p1.getId(), 15L, 3, 3, 10, 60, 4);  // Day3 波比跳
-        // 模板2：增肌进阶（每周4练，分3天）
-        TrainingPlan p2 = insertPlan(null, "增肌进阶分化计划", 1, 3, "每周4练", "增肌,进阶", 1);
-        bindAction(p2.getId(), 3L, 1, 4, 10, 90, 1);   // Day1 引体向上
-        bindAction(p2.getId(), 4L, 2, 4, 12, 90, 2);   // Day2 杠铃划船
-        bindAction(p2.getId(), 10L, 3, 4, 10, 120, 3); // Day3 硬拉
-        // 模板3：减脂新手（每周4练，分3天）
-        TrainingPlan p3 = insertPlan(null, "减脂燃脂计划", 2, 1, "每周4练", "减脂,新手", 1);
-        bindAction(p3.getId(), 15L, 1, 4, 12, 45, 1);  // Day1 波比跳
-        bindAction(p3.getId(), 16L, 2, 4, 20, 30, 2);  // Day2 开合跳
-        bindAction(p3.getId(), 13L, 3, 3, 60, 45, 3);  // Day3 平板支撑
-        // 模板4：塑形进阶（每周5练，分3天）
-        TrainingPlan p4 = insertPlan(null, "塑形全身计划", 3, 3, "每周5练", "塑形,进阶", 1);
-        bindAction(p4.getId(), 5L, 1, 4, 12, 60, 1);   // Day1 哑铃推举
-        bindAction(p4.getId(), 12L, 2, 4, 12, 60, 2);  // Day2 箭步蹲
-        bindAction(p4.getId(), 14L, 3, 4, 15, 45, 3);  // Day3 卷腹
     }
 
     private void initArticle() {
@@ -419,31 +385,6 @@ public class DataInitializer implements CommandLineRunner {
         c.setCalorie(calorie);
         c.setStatus(2); // 已发布
         courseMapper.insert(c);
-    }
-
-    private TrainingPlan insertPlan(Long userId, String name, int goal, int level, String cycle, String tags, int isTemplate) {
-        TrainingPlan p = new TrainingPlan();
-        p.setUserId(userId);
-        p.setName(name);
-        p.setGoal(goal);
-        p.setLevel(level);
-        p.setCycle(cycle);
-        p.setTags(tags);
-        p.setIsTemplate(isTemplate);
-        planMapper.insert(p);
-        return p;
-    }
-
-    private void bindAction(Long planId, Long actionId, int dayNo, int sets, int reps, int rest, int sort) {
-        PlanAction pa = new PlanAction();
-        pa.setPlanId(planId);
-        pa.setActionId(actionId);
-        pa.setDayNo(dayNo);
-        pa.setSets(sets);
-        pa.setReps(reps);
-        pa.setRest(rest);
-        pa.setSort(sort);
-        planActionMapper.insert(pa);
     }
 
     private void insertArticle(String title, int type, String content, String cover) {

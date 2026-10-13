@@ -26,6 +26,8 @@ public class TrainingRecord {
     private Integer calorie;
     /** 完成动作数 */
     private Integer completedCount;
+    /** 自评难度：1太简单/2适中/3太难（AI 私教反馈闭环） */
+    private Integer feedback;
     private LocalDateTime createTime;
 
 }

@@ -87,7 +87,6 @@ public class HealthService {
     }
 
     public Map<String, Object> assessment(Long userId) {
-        User user = userMapper.selectById(userId);
         BodyData latest = bodyDataMapper.selectOne(new LambdaQueryWrapper<BodyData>()
                 .eq(BodyData::getUserId, userId).orderByDesc(BodyData::getRecordDate).last("LIMIT 1"));
         Map<String, Object> data = new HashMap<>();
@@ -130,6 +129,9 @@ public class HealthService {
 
     public Map<String, Object> goalProgress(Long userId) {
         User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
+        }
         BodyData latest = bodyDataMapper.selectOne(new LambdaQueryWrapper<BodyData>()
                 .eq(BodyData::getUserId, userId).orderByDesc(BodyData::getRecordDate).last("LIMIT 1"));
         Map<String, Object> data = new HashMap<>();

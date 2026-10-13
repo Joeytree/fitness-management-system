@@ -12,9 +12,11 @@ import com.fitness.security.JwtUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.net.URI;
@@ -29,6 +31,7 @@ import java.util.Random;
 /**
  * 用户服务：注册、登录、微信登录、资料管理
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -44,6 +47,7 @@ public class UserService {
     @Value("${fitness.wechat.secret}")
     private String wxSecret;
 
+    @Transactional
     public User register(RegisterRequest req) {
         Long exists = userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getPhone, req.getPhone()));
@@ -81,6 +85,7 @@ public class UserService {
     /**
      * 微信一键登录（REQ-USER-007/008）：code 换 openid，无则自动注册
      */
+    @Transactional
     public Map<String, Object> wxLogin(String code) {
         if (!StringUtils.hasText(code)) {
             throw new BusinessException(ResultCode.WX_LOGIN_FAILED, "微信登录失败，请重试");
@@ -99,6 +104,8 @@ public class UserService {
             }
             openid = json.get("openid").asText();
         } catch (Exception e) {
+            // 记录根因，避免网络/配置/解析错误被通用话术掩盖
+            log.error("微信登录 code2session 失败", e);
             throw new BusinessException(ResultCode.WX_LOGIN_FAILED, "微信登录失败，请重试");
         }
 
@@ -145,6 +152,7 @@ public class UserService {
         if (req.getGoal() != null) user.setGoal(req.getGoal());
         if (req.getLevel() != null) user.setLevel(req.getLevel());
         if (req.getPreferParts() != null) user.setPreferParts(req.getPreferParts());
+        if (req.getContraindication() != null) user.setContraindication(req.getContraindication());
         // 更新推荐标签（tags 存目标+水平，与 preferParts 语义分离）
         user.setTags(buildTags(user.getGoal(), user.getLevel()));
         userMapper.updateById(user);

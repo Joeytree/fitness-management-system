@@ -133,6 +133,7 @@ public class PlanService {
             Map<String, Object> m = new HashMap<>();
             m.put("planCourseId", pc.getId());
             m.put("dayNo", pc.getDayNo() == null ? 1 : pc.getDayNo());
+            m.put("week", pc.getWeek());
             m.put("course", course);
             courses.add(m);
         }
@@ -146,6 +147,7 @@ public class PlanService {
         grouped.forEach((dayNo, list) -> {
             Map<String, Object> d = new HashMap<>();
             d.put("dayNo", dayNo);
+            d.put("week", list.get(0).get("week"));
             d.put("courses", list);
             days.add(d);
         });

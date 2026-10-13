@@ -69,10 +69,10 @@ public class DietService {
             m.put("recordDate", r.getRecordDate());
             if (food != null) {
                 BigDecimal factor = r.getAmount().divide(new BigDecimal(100), 4, RoundingMode.HALF_UP);
-                m.put("calorie", food.getCalorie().multiply(factor).setScale(1, RoundingMode.HALF_UP));
-                m.put("protein", food.getProtein().multiply(factor).setScale(1, RoundingMode.HALF_UP));
-                m.put("carb", food.getCarb().multiply(factor).setScale(1, RoundingMode.HALF_UP));
-                m.put("fat", food.getFat().multiply(factor).setScale(1, RoundingMode.HALF_UP));
+                m.put("calorie", scaleNutrient(food.getCalorie(), factor));
+                m.put("protein", scaleNutrient(food.getProtein(), factor));
+                m.put("carb", scaleNutrient(food.getCarb(), factor));
+                m.put("fat", scaleNutrient(food.getFat(), factor));
             }
             return m;
         }).toList();
@@ -82,6 +82,10 @@ public class DietService {
         DietRecord record = dietRecordMapper.selectById(recordId);
         if (record == null || !userId.equals(record.getUserId())) {
             throw new BusinessException(ResultCode.FORBIDDEN, "无权操作该记录");
+        }
+        // 与 add 对齐：校验新 foodId 存在，避免指向不存在的食物
+        if (req.getFoodId() == null || foodMapper.selectById(req.getFoodId()) == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "食物不存在");
         }
         record.setMealType(req.getMealType());
         record.setFoodId(req.getFoodId());
@@ -120,10 +124,10 @@ public class DietService {
                 continue;
             }
             BigDecimal factor = r.getAmount().divide(new BigDecimal(100), 4, RoundingMode.HALF_UP);
-            totalCalorie = totalCalorie.add(food.getCalorie().multiply(factor));
-            protein = protein.add(food.getProtein().multiply(factor));
-            carb = carb.add(food.getCarb().multiply(factor));
-            fat = fat.add(food.getFat().multiply(factor));
+            if (food.getCalorie() != null) totalCalorie = totalCalorie.add(food.getCalorie().multiply(factor));
+            if (food.getProtein() != null) protein = protein.add(food.getProtein().multiply(factor));
+            if (food.getCarb() != null) carb = carb.add(food.getCarb().multiply(factor));
+            if (food.getFat() != null) fat = fat.add(food.getFat().multiply(factor));
         }
 
         int targetCalorie = estimateTargetCalorie(userId);
@@ -177,11 +181,18 @@ public class DietService {
                 continue;
             }
             BigDecimal factor = r.getAmount().divide(new BigDecimal(100), 4, RoundingMode.HALF_UP);
-            BigDecimal cal = food.getCalorie().multiply(factor);
+            BigDecimal cal = food.getCalorie() == null ? BigDecimal.ZERO : food.getCalorie().multiply(factor);
             String key = "meal" + r.getMealType();
             map.merge(key, cal, BigDecimal::add);
         }
         return map;
+    }
+
+    /**
+     * 营养值按份量缩放（字段为空时返回 0，避免 NPE）
+     */
+    private BigDecimal scaleNutrient(BigDecimal value, BigDecimal factor) {
+        return value == null ? BigDecimal.ZERO : value.multiply(factor).setScale(1, RoundingMode.HALF_UP);
     }
 
     /**

@@ -11,6 +11,7 @@ import com.fitness.mapper.ActionMapper;
 import com.fitness.mapper.CourseActionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -132,7 +133,8 @@ public class ActionService {
         return exist;
     }
 
-    /** 删除自己的自定义动作（被课程引用时阻止删除） */
+    /** 删除自己的自定义动作（被课程引用时阻止删除）；引用校验与删除须在同一事务，避免 TOCTOU */
+    @Transactional
     public void deleteUgc(Long userId, Long id) {
         Action exist = actionMapper.selectById(id);
         if (exist == null || !userId.equals(exist.getUserId())) {

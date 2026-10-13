@@ -168,12 +168,15 @@ public class CourseService {
 
     @Transactional
     public boolean unfavorite(Long courseId, Long userId) {
-        courseFavoriteMapper.delete(new LambdaQueryWrapper<CourseFavorite>()
+        // 仅当确实删除了收藏记录时才扣减计数，避免未收藏/重复调用导致计数漂移
+        int deleted = courseFavoriteMapper.delete(new LambdaQueryWrapper<CourseFavorite>()
                 .eq(CourseFavorite::getCourseId, courseId).eq(CourseFavorite::getUserId, userId));
-        Course course = courseMapper.selectById(courseId);
-        if (course != null && course.getFavoriteCount() != null && course.getFavoriteCount() > 0) {
-            course.setFavoriteCount(course.getFavoriteCount() - 1);
-            courseMapper.updateById(course);
+        if (deleted > 0) {
+            Course course = courseMapper.selectById(courseId);
+            if (course != null && course.getFavoriteCount() != null && course.getFavoriteCount() > 0) {
+                course.setFavoriteCount(course.getFavoriteCount() - 1);
+                courseMapper.updateById(course);
+            }
         }
         return true;
     }

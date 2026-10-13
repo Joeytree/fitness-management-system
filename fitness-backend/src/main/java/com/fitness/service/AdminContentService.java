@@ -464,6 +464,9 @@ public class AdminContentService {
                             "createTime", m.getCreateTime() == null ? "" : m.getCreateTime(),
                             "status", 0, "rejectReason", "", "userName", userName(m.getUserId()))));
         }
+        // 防御：page/pageSize 非法时归一到安全值，避免 (page-1)*pageSize 为负导致 subList 崩溃
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
         int from = (int) ((page - 1) * pageSize);
         if (from >= result.size()) {
             return List.of();

@@ -31,6 +31,7 @@ import com.fitness.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -127,6 +128,10 @@ public class AdminService {
     }
 
     public void updateUserStatus(Long id, Integer status) {
+        // 用户状态语义仅 0(禁用)/1(正常)，与内容 status(0-4) 不同，需在此二次校验
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "状态取值非法");
+        }
         User user = userMapper.selectById(id);
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
@@ -264,6 +269,7 @@ public class AdminService {
         return permissionMapper.selectList(new LambdaQueryWrapper<Permission>().orderByAsc(Permission::getSort));
     }
 
+    @Transactional
     public void assignPermission(Long roleId, List<Long> permissionIds) {
         rolePermissionMapper.delete(new LambdaQueryWrapper<RolePermission>()
                 .eq(RolePermission::getRoleId, roleId));
@@ -287,6 +293,7 @@ public class AdminService {
         return admins;
     }
 
+    @Transactional
     public Admin createAdmin(String username, String password, String nickname, Long roleId) {
         Long cnt = adminMapper.selectCount(new LambdaQueryWrapper<Admin>()
                 .eq(Admin::getUsername, username));

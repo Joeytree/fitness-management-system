@@ -20,6 +20,8 @@ public class PlanCourse {
     private Long courseId;
     /** 训练天序号（1-7），每天一门课 */
     private Integer dayNo;
+    /** 周次（AI 4 周计划用 1-4；模板计划为 null） */
+    private Integer week;
     private Integer sort;
     private LocalDateTime createTime;
 

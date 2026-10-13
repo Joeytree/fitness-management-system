@@ -17,6 +17,7 @@ import com.fitness.mapper.TrainingPlanMapper;
 import com.fitness.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -54,6 +55,9 @@ public class RecommendService {
      */
     public List<Map<String, Object>> recommendPlans(Long userId, int limit) {
         User user = userMapper.selectById(userId);
+        if (user == null) {
+            return new ArrayList<>();
+        }
         List<String> preferParts = recommendProfileService.mergedParts(user);
         Set<Long> adopted = recommendProfileService.adoptedIds(userId, TYPE_PLAN);
         Set<Integer> adoptedGoals = adoptedGoals(adopted);
@@ -85,6 +89,9 @@ public class RecommendService {
      */
     public List<Map<String, Object>> recommendRecipes(Long userId, int limit) {
         User user = userMapper.selectById(userId);
+        if (user == null) {
+            return new ArrayList<>();
+        }
         int mealTarget = mealTargetByGoal(user);
         Set<Long> adoptedRecipes = recommendProfileService.adoptedIds(userId, TYPE_RECIPE);
         Set<Integer> adoptedGoals = adoptedRecipeGoals(adoptedRecipes);
@@ -99,6 +106,7 @@ public class RecommendService {
             m.put("goal", recipe.getGoal());
             m.put("calorie", recipe.getCalorie());
             m.put("tags", recipe.getTags());
+            m.put("cover", recipe.getCover());
             ScoreResult sr = scoreRecipe(user, recipe, mealTarget, adoptedGoals);
             m.put("score", sr.score);
             m.put("reasons", sr.reasons);
@@ -113,6 +121,9 @@ public class RecommendService {
      */
     public List<Map<String, Object>> recommendCourses(Long userId, int limit) {
         User user = userMapper.selectById(userId);
+        if (user == null) {
+            return new ArrayList<>();
+        }
         List<String> preferParts = recommendProfileService.mergedParts(user);
         int avgDuration = recommendProfileService.avgDuration(userId);
 
@@ -148,6 +159,7 @@ public class RecommendService {
     /**
      * 行为反馈：按 (userId, type, targetId) 去重更新（不再每次插新记录）
      */
+    @Transactional
     public void feedback(Long userId, int type, Long targetId, String action) {
         RecommendRecord exist = recommendRecordMapper.selectOne(
                 new LambdaQueryWrapper<RecommendRecord>()
